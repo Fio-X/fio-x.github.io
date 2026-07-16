@@ -21,6 +21,7 @@ export default function Home() {
             记录作品、学习和生活。
           </p>
           <Link href="/about">关于我</Link>
+          <Link href="/works">Works</Link>
         </div>
         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
           <a
