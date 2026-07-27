@@ -1,11 +1,8 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import { ContentBody } from "@/components/content-body";
+import { SiteShell } from "@/components/site-shell";
+import { getPage } from "@/lib/content";
+import { pageSectionItems } from "@/lib/navigation";
 
-export default function AboutPage() {
-  return (
-    <main className="space-y-4 p-8">
-      <h1 className="text-3xl font-semibold">关于我</h1>
-      <p>这是我的个人作品博客。</p>
-      <Link href="/">返回首页</Link>
-    </main>
-  );
-}
+export const metadata: Metadata = { title: "Information", alternates: { canonical: "/information" }, robots: { index: false, follow: true } };
+export default function AboutPage() { const page = getPage("information"); const sectionIds = Object.fromEntries(page?.sections.map((section) => [section.label, section.id]) ?? []); return <SiteShell currentPath="/information" sectionItems={pageSectionItems(page)}><h1>{page?.title ?? "Information"}</h1>{page ? <ContentBody sectionIds={sectionIds}>{page.body}</ContentBody> : <p className="empty-state">信息将在这里发布。</p>}</SiteShell>; }

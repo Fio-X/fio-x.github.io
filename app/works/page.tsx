@@ -1,29 +1,8 @@
-type Work = {
-  title: string;
-  description: string;
-};
+import type { Metadata } from "next";
+import Link from "next/link";
+import { SiteShell } from "@/components/site-shell";
+import { getContent, workHref } from "@/lib/content";
+import { workSectionItems } from "@/lib/navigation";
 
-const works: Work[] = [
-  {
-    title: "个人作品博客",
-    description: "使用 Next.js 和 Tailwind CSS 构建的静态网站。",
-  },
-  {
-    title: "试验性记录。",
-    description: "关于颜色对比实验的记录。",
-  },
-];
-
-export default function WorksPage() {
-  return (
-    <main className="space-y-4 p-8">
-      <h1 className="text-3xl font-semibold">作品</h1>
-      {works.map((work) => (
-        <article key={work.title}>
-          <h2>{work.title}</h2>
-          <p>{work.description}</p>
-        </article>
-      ))}
-    </main>
-  );
-}
+export const metadata: Metadata = { title: "Works", alternates: { canonical: "/works" } };
+export default function WorksPage() { const { works } = getContent(); return <SiteShell currentPath="/works" sectionItems={workSectionItems("/works")}><h1>Works</h1>{works.length === 0 ? <p className="empty-state">作品将在这里发布。</p> : <ul className="index-list">{works.map((work) => <li key={work.slug}><Link href={workHref(work.slug)}><h2>{work.title}</h2><p>{work.summary}</p></Link></li>)}</ul>}</SiteShell>; }
