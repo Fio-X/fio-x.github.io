@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { SITE_NAME } from "@/lib/site";
+import { SITE_NAME } from "@/lib/site-constants";
 
 export function SiteFooter({ home = false }: { home?: boolean }) {
   const backToTopRef = useRef<HTMLAnchorElement>(null);
@@ -19,6 +19,7 @@ export function SiteFooter({ home = false }: { home?: boolean }) {
     return () => window.removeEventListener("scroll", updateVisibility);
   }, []);
 
+  if (home) return null;
   return (
     <footer className={`site-footer${home ? " site-footer-home" : ""}`}>
       <p>&copy; 2026 {SITE_NAME}</p>

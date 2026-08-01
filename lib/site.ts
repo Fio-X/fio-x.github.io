@@ -1,9 +1,9 @@
-export const SITE_NAME = "Fio";
-export const SITE_DESCRIPTION = "作品、写作与学习记录。";
-export const SITE_ORIGIN = "https://fio-x.github.io";
+import { getPage, hasPageContent } from "./content";
+import { sitePath } from "./site-constants";
+export { SITE_DESCRIPTION, SITE_NAME, SITE_ORIGIN } from "./site-constants";
 
 export type NavigationItem =
-  | { href: string; label: string; disabled?: false }
+  | { href: string; label: string; external?: boolean; disabled?: false }
   | { label: string; disabled: true; href?: never };
 
 export interface SectionNavItem {
@@ -13,18 +13,28 @@ export interface SectionNavItem {
   disabled?: boolean;
 }
 
-export const HOME_NAV_ITEMS: readonly NavigationItem[] = [
-  { href: "/archive", label: "latest" },
-  { href: "/works", label: "works" },
-  { href: "/information", label: "information" },
-];
+export function homeNavItemsFromContent(state?: { hasNews?: boolean; hasWorks?: boolean; hasInformation?: boolean }): NavigationItem[] {
+  void state;
+  return [
+    { href: sitePath("/news"), label: "Latest" },
+    { href: sitePath("/works"), label: "Works" },
+    { href: sitePath("/information"), label: "Information" },
+  ];
+}
 
-export const CONTENT_NAV_ITEMS: readonly NavigationItem[] = [
-  { href: "/archive", label: "news" },
-  { href: "/biography", label: "biography" },
-  { href: "/works", label: "works" },
-  { href: "/publications", label: "publications" },
-  { href: "/articles", label: "articles" },
-  { href: "/contact", label: "contact" },
-  { label: "instagram", disabled: true },
-];
+export function homeNavItems(): NavigationItem[] { return homeNavItemsFromContent(); }
+
+export function contentNavItems(): NavigationItem[] {
+  return [
+    { href: sitePath("/news"), label: "News" },
+    { href: sitePath("/biography"), label: "Biography" },
+    { href: sitePath("/works"), label: "Works" },
+    { href: sitePath("/publications"), label: "Publications" },
+    { href: sitePath("/contact"), label: "Contact" },
+    { href: sitePath("/information"), label: "Information" },
+  ];
+}
+
+export function pageHasPublicContent(slug: "information" | "biography" | "contact") {
+  return hasPageContent(getPage(slug));
+}

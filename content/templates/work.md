@@ -1,4 +1,5 @@
 ---
+kind: "photography"
 title: "作品标题"
 date: "2026-07-27"
 summary: "作品的一句话说明。"

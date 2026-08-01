@@ -3,7 +3,7 @@ title: "文章标题"
 date: "2026-07-27"
 description: "一句话摘要，用于目录、搜索结果和 RSS。"
 category: "journal"
-section: "news"
+template: "essay"
 tags:
   - "writing"
 draft: true

@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fio — Source-aligned desktop content review</title>
+
+  <!-- Audit-only: the reference site loads Adobe Garamond from this hosted
+       stylesheet. It is not copied into the production project. -->
+  <link rel="stylesheet" href="https://fast.fonts.net/cssapi/e5a7edfc-453a-4658-b219-9c1e4c40f48f.css">
+
+  <style>
+    :root {
+      --paper: #eaeeee;
+      --ink: #000;
+      --muted: #777;
+      --rule: #999;
+      --sidebar: 360px;
+      --serif: "Adobe Garamond W01", "游明朝体", "Yu Mincho", YuMincho,
+        "ヒラギノ明朝 Pro", "Hiragino Mincho Pro", "MS P明朝", "MS PMincho", serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* The source theme reset. */
+    html,
+    body,
+    div,
+    span,
+    h1,
+    h2,
+    h3,
+    p,
+    ul,
+    ol,
+    li,
+    header,
+    main,
+    nav,
+    footer,
+    section,
+    article,
+    figure,
+    blockquote,
+    a {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      font-size: 100%;
+      vertical-align: baseline;
+      background: transparent;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-width: 1100px;
+      min-height: 600px;
+      margin: 0;
+      padding: 0;
+      background: var(--paper);
+    }
+
+    body {
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: 62.5%;
+      font-weight: 400;
+      line-height: 1.4em;
+      overflow-wrap: break-word;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border: 0;
+      outline: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      width: auto;
+      font-weight: 400;
+    }
+
+    h1 {
+      font-size: 28px;
+      line-height: 1.4em;
+    }
+
+    h2 {
+      font-size: 22px;
+      line-height: 1.4em;
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.4em;
+    }
+
+    p,
+    th,
+    td {
+      font-size: 14px;
+      line-height: 1.6em;
+    }
+
+    p.year,
+    p.category,
+    p.spec,
+    p.date,
+    p.day {
+      color: var(--muted);
+    }
+
+    ul,
+    ol {
+      list-style: none;
+    }
+
+    a,
+    a:visited,
+    a:active {
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    a:hover {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .cf::after {
+      display: table;
+      clear: both;
+      content: "";
+    }
+
+    /* Review UI is outside the recreated site chrome. */
+    .review-bar {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 30000;
+      padding: 8px 10px;
+      border: 1px solid #bbb;
+      background: #f7f8f5;
+      color: #333;
+      font: 11px/1.3 var(--sans);
+    }
+
+    .review-bar select {
+      margin-left: 6px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .review-clean .review-bar {
+      display: none;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* Header / nav: this mirrors .header, .header-inner, .pc-nav,
+       .nav-inner-01 and .nav-inner-02 in the source theme. */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 20000;
+      width: var(--sidebar);
+      height: 100%;
+      background: var(--paper);
+    }
+
+    .header-inner {
+      position: absolute;
+      top: 50px;
+      left: 50px;
+    }
+
+    .logo {
+      position: relative;
+      z-index: 101;
+      text-align: left;
+    }
+
+    .logo h1 {
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1em;
+    }
+
+    .nav {
+      position: relative;
+      margin-top: 40px;
+    }
+
+    .pc-nav {
+      display: block;
+    }
+
+    .nav-inner-01 {
+      float: left;
+      margin-right: 40px;
+    }
+
+    .nav-inner-02 {
+      float: left;
+    }
+
+    .main-nav li,
+    .sub-nav li {
+      position: relative;
+      padding: 4px 0;
+      font-size: 14px;
+    }
+
+    .main-nav li.jpt,
+    .sub-nav li.jpt {
+      font-size: 12px;
+    }
+
+    .sub-nav li.video-works {
+      margin-top: 1.6em;
+    }
+
+    .sub-nav li.original-last {
+      margin-bottom: 1.6em;
+    }
+
+    .sub-nav li a,
+    .news-item a,
+    .page-inner a {
+      color: var(--muted);
+    }
+
+    .sub-nav li a:hover,
+    .news-item a:hover,
+    .page-inner a:hover {
+      color: var(--ink);
+    }
+
+    .page-inner a .item-inner {
+      color: var(--ink);
+    }
+
+    .page-inner a .item-inner:hover {
+      color: var(--muted);
+    }
+
+    .main-nav li.current-menu-item::before,
+    .sub-nav li.current-menu-item::before,
+    .sub-nav li.m-news::before,
+    .sub-nav li.m-information::before {
+      display: inline-block;
+      position: absolute;
+      top: 50%;
+      left: -1em;
+      width: 4px;
+      height: 4px;
+      margin: 0 5px;
+      border-radius: 2px;
+      background: var(--ink);
+      content: "";
+      line-height: 1em;
+      transform: translateY(-50%);
+    }
+
+    .sub-nav li.current-menu-item::before,
+    .sub-nav li.m-news::before,
+    .sub-nav li.m-information::before {
+      background: var(--muted);
+    }
+
+    .lang-nav {
+      margin-top: 40px;
+    }
+
+    .lang-nav li {
+      display: inline-block;
+    }
+
+    .lang-nav li:nth-of-type(2n)::before {
+      padding: 3px;
+      content: " / ";
+      font-size: 14px;
+    }
+
+    .lang-nav li a {
+      padding: 3px 0;
+      font-size: 13px;
+    }
+
+    /* Page / content width. base.js sets the wide desktop width to
+       viewport-height - 36px and the <=1365px desktop width to 68%. */
+    .page-main {
+      width: auto;
+      height: auto;
+      margin: 18px 18px 0;
+      padding-bottom: 18px;
+    }
+
+    .page-inner {
+      float: right;
+      width: calc(100vh - 36px);
+    }
+
+    .contents {
+      width: 100%;
+    }
+
+    /* News: source order is image, then text, then a 15px section rule. */
+    .news-text,
+    .news-img {
+      margin-top: 1em;
+    }
+
+    .news-img-inner,
+    .prototype-image {
+      display: block;
+    }
+
+    .prototype-image {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    img.post-img {
+      max-height: 257px;
+      width: auto;
+    }
+
+    .visual-sun {
+      background:
+        radial-gradient(circle at 56% 36%, #fffbd9 0 12%, transparent 13%),
+        linear-gradient(135deg, #b9c5ca, #748d83);
+    }
+
+    .visual-ochre {
+      background:
+        radial-gradient(ellipse at 45% 60%, #d3a36f 0 14%, transparent 15%),
+        linear-gradient(135deg, #d6ddd5, #9a806a);
+    }
+
+    .visual-blue {
+      background:
+        linear-gradient(155deg, transparent 0 48%, #d9e3e4 49% 62%, transparent 63%),
+        linear-gradient(35deg, #718c95, #bfcfca);
+    }
+
+    .visual-rose {
+      background:
+        radial-gradient(circle at 50% 48%, #d59b93 0 20%, transparent 21%),
+        linear-gradient(135deg, #e0d4c8, #99a7a2);
+    }
+
+    .visual-graphite {
+      background:
+        linear-gradient(110deg, #202b2d 0 35%, #cad3ca 36% 63%, #8b9c94 64%);
+    }
+
+    .section-line {
+      display: inline-block;
+      width: 15px;
+      height: 1px;
+      margin: 3em 0 2em;
+      border: 0;
+      background: var(--rule);
+      transform: translateY(-50%);
+    }
+
+    .section-line:last-of-type {
+      height: 0;
+      margin: 0;
+    }
+
+    .page-numbers-nav {
+      position: relative;
+      display: block;
+      margin-top: 5em;
+    }
+
+    .page-numbers li {
+      display: inline-block;
+      padding-right: 0.5em;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .page-numbers li .current {
+      color: var(--ink);
+    }
+
+    /* Biography / Contact lists. */
+    .list-set {
+      margin-bottom: 4em;
+      padding-top: 18px;
+    }
+
+    .list-set:first-of-type {
+      padding-top: 0;
+    }
+
+    .list-set:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .list-title p {
+      margin-bottom: 0.3em;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .list-text {
+      display: table;
+      border-collapse: collapse;
+    }
+
+    .cell-box {
+      display: table-row;
+    }
+
+    .biography-contents .cell-01,
+    .biography-contents .cell-02 {
+      display: table-cell;
+      padding: 0;
+      vertical-align: top;
+    }
+
+    .biography-contents .cell-01 {
+      width: 60px;
+      padding-right: 5px;
+    }
+
+    .list-text p {
+      line-height: 1.8em;
+    }
+
+    /* Works: one full-width item stream, separated project/video sections. */
+    .works-contents .item,
+    .video_works-contents .item,
+    .installation_views-contents .item {
+      margin-bottom: 5em;
+    }
+
+    .works-contents .item:last-of-type,
+    .video_works-contents .item:last-of-type,
+    .installation_views-contents .item:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .works-contents .item-text,
+    .video_works-contents .item-text,
+    .installation_views-contents .item-text {
+      margin-top: 1em;
+    }
+
+    .works-contents h1.title {
+      font-size: 14px;
+      line-height: 1.4em;
+    }
+
+    .works-img {
+      display: block;
+      width: 100%;
+    }
+
+    .project-contents {
+      margin-top: 8em;
+      padding-top: 12em;
+      border-top: 1px solid var(--rule);
+    }
+
+    .video-contents {
+      margin-top: 8em;
+      margin-bottom: 5em;
+      padding-top: 12em;
+      border-top: 1px solid var(--rule);
+    }
+
+    .installation-contents {
+      margin: 0;
+    }
+
+    /* Publications / Articles: source uses inline-table, 31% / 3.5%, and
+       deliberately leaves the default baseline alignment intact. */
+    .archive-inner .publications-contents,
+    .archive-inner .articles-contents {
+      font-size: 0;
+    }
+
+    .archive-inner .publications-contents .item,
+    .archive-inner .articles-contents .item {
+      display: inline-table;
+      width: 31%;
+      margin-right: 3.5%;
+      margin-bottom: 7%;
+      font-size: 10px;
+    }
+
+    .archive-inner .publications-contents .item:nth-of-type(3n),
+    .archive-inner .articles-contents .item:nth-of-type(3n) {
+      margin-right: 0;
+    }
+
+    .archive-inner .publications-contents .item a,
+    .archive-inner .articles-contents .item a {
+      position: relative;
+      display: block;
+    }
+
+    .item-image {
+      display: block;
+    }
+
+    .archive-inner .publications-contents .item-image img {
+      display: block;
+      width: auto;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .archive-inner .articles-contents .item-image img {
+      display: block;
+      width: 75%;
+      max-width: 75%;
+      height: auto;
+    }
+
+    .archive-inner .publications-contents .item-text,
+    .archive-inner .articles-contents .item-text {
+      margin-top: 1em;
+    }
+
+    .archive-inner .publications-contents h1.title,
+    .archive-inner .articles-contents h1.title {
+      font-size: 14px;
+      line-height: 1.4em;
+    }
+
+    /* Single work / publication review pages keep the source content order. */
+    .works-single-contents .item-text {
+      display: none;
+      margin-bottom: 18px;
+    }
+
+    .works-single-contents .item-inner {
+      margin-bottom: 18px;
+    }
+
+    .works-single-contents .item-inner:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .media-image {
+      display: block;
+      width: 100%;
+      background: #c7cfcc;
+    }
+
+    .media-image.landscape { aspect-ratio: 3 / 2; }
+    .media-image.portrait { aspect-ratio: 2 / 3; }
+
+    .media-pair {
+      display: flex;
+      gap: 2%;
+    }
+
+    .media-pair .media-item {
+      width: 49%;
+    }
+
+    .publication-slider {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3 / 2;
+      overflow: hidden;
+      background: #b8c5c2;
+    }
+
+    .publication-slider .slide {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 60% 36%, #f0e4b5 0 12%, transparent 13%),
+        linear-gradient(135deg, #7d958e, #c7d2ca 48%, #877d76);
+    }
+
+    .publication-slider .slide:nth-child(2) {
+      inset: 12% 10%;
+      opacity: .72;
+      background:
+        linear-gradient(150deg, transparent 0 45%, #dfcdbf 46% 64%, transparent 65%),
+        #9caaa4;
+    }
+
+    .slider-hint {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      color: #fff;
+      font: 11px/1.3 var(--sans);
+      letter-spacing: .04em;
+    }
+
+    .publications-single-contents .item-text {
+      margin-top: 6em;
+    }
+
+    .publications-single-contents .item-text h1.title {
+      font-size: 18px;
+      line-height: 1.4em;
+    }
+
+    .description {
+      margin-top: 3em;
+    }
+
+    .description p + p {
+      margin-top: 1.6em;
+    }
+
+    /* Information article templates. The index and essay/conversation keep
+       Ueda's narrow reading measure; image notes open the media track while
+       retaining Kawauchi's image-to-caption rhythm. Every media block is a
+       replaceable prototype slot, not a reference-site asset. */
+    .information-contents,
+    .information-article {
+      width: 100%;
+    }
+
+    .information-index,
+    .information-article.narrow {
+      width: 580px;
+      max-width: 100%;
+    }
+
+    .information-index h1.title,
+    .information-article h1.title {
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.35em;
+    }
+
+    .information-index .index-intro,
+    .information-article .article-lead {
+      margin-top: 2em;
+      font-size: 16px;
+      line-height: 1.8em;
+    }
+
+    .information-entry {
+      margin-top: 6em;
+    }
+
+    .information-entry + .information-entry {
+      margin-top: 5em;
+    }
+
+    .information-meta,
+    .information-entry .entry-type,
+    .information-entry .entry-template {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6em;
+    }
+
+    .information-entry h2 {
+      margin-top: 0.3em;
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.35em;
+    }
+
+    .information-entry p.entry-summary {
+      margin-top: 1em;
+      font-size: 13px;
+      line-height: 1.8em;
+    }
+
+    .information-entry a.entry-link {
+      display: inline-block;
+      margin-top: 1.2em;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .information-entry a.entry-link:hover {
+      color: var(--ink);
+    }
+
+    .information-article {
+      font-size: 13px;
+      line-height: 24px;
+    }
+
+    .information-article .article-head {
+      margin-bottom: 4em;
+    }
+
+    .information-article .article-kicker {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6em;
+    }
+
+    .information-article .article-date {
+      margin-top: 0.2em;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6em;
+    }
+
+    .information-article h1.title {
+      margin-top: 0.25em;
+    }
+
+    .information-article .article-body {
+      margin-top: 4em;
+    }
+
+    .information-article .article-body h2 {
+      margin: 4em 0 1.6em;
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 24px;
+    }
+
+    .information-article .article-body p {
+      font-size: 13px;
+      line-height: 24px;
+    }
+
+    .information-article .article-body p + p {
+      margin-top: 24px;
+    }
+
+    .information-article .article-body blockquote {
+      margin: 3em 0;
+      padding-left: 60px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.8em;
+    }
+
+    .template-media {
+      margin: 0;
+    }
+
+    .template-image {
+      display: block;
+      width: 100%;
+      min-height: 240px;
+      background-color: #c7cfcc;
+    }
+
+    .template-image.hero {
+      aspect-ratio: 16 / 10;
+    }
+
+    .template-image.image-note {
+      aspect-ratio: 3 / 2;
+    }
+
+    .template-image.image-note-tall {
+      aspect-ratio: 4 / 5;
+    }
+
+    .template-caption {
+      margin-top: 0.8em;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6em;
+    }
+
+    .information-article.image-notes {
+      width: 720px;
+      max-width: 100%;
+    }
+
+    .information-article.image-notes .article-head {
+      width: 580px;
+      max-width: 100%;
+    }
+
+    .image-note-item {
+      margin-bottom: 5em;
+    }
+
+    .image-note-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .image-note-item .note-copy {
+      width: 580px;
+      max-width: 100%;
+      margin-top: 1.2em;
+    }
+
+    .information-article.conversation .conversation-list {
+      margin-top: 4em;
+    }
+
+    .conversation-row {
+      display: table;
+      width: 100%;
+      margin-top: 2em;
+    }
+
+    .conversation-speaker,
+    .conversation-answer {
+      display: table-cell;
+      vertical-align: top;
+    }
+
+    .conversation-speaker {
+      width: 70px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 24px;
+    }
+
+    .conversation-answer {
+      font-size: 13px;
+      line-height: 24px;
+    }
+
+    .conversation-answer p + p {
+      margin-top: 24px;
+    }
+
+    .information-back {
+      display: inline-block;
+      margin-top: 6em;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .spec-set {
+      margin-top: 6em;
+      margin-bottom: 5em;
+    }
+
+    .spec-row {
+      display: table;
+      width: 100%;
+    }
+
+    .spec-label,
+    .spec-value {
+      display: table-cell;
+      padding: 5px 5px 5px 0;
+      vertical-align: top;
+    }
+
+    .spec-label {
+      width: 120px;
+      color: var(--muted);
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 18px;
+      left: 50px;
+      z-index: 30000;
+    }
+
+    .copy {
+      float: left;
+      margin-right: 30px;
+      font-size: 13px;
+    }
+
+    @media only screen and (max-width: 1365px) {
+      .page-inner {
+        width: 68%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="review-bar">
+    <strong>Desktop source-aligned review</strong>
+    <label>
+      <span class="sr-only">View</span>
+      <select id="view-select" aria-label="Choose review page">
+        <option value="news">News</option>
+        <option value="news-2">News / page 2</option>
+        <option value="biography">Biography</option>
+        <option value="works">Works</option>
+        <option value="work-detail">Works detail</option>
+        <option value="publications">Publications</option>
+        <option value="publications-2">Publications / page 2</option>
+        <option value="publication-detail">Publication detail</option>
+        <option value="articles">Articles</option>
+        <option value="information">Information / entries</option>
+        <option value="information-essay">Information / Essay template</option>
+        <option value="information-image-notes">Information / Image Notes template</option>
+        <option value="information-conversation">Information / Conversation template</option>
+        <option value="contact">Contact</option>
+      </select>
+    </label>
+  </div>
+
+  <header class="header">
+    <div class="header-inner cf">
+      <div class="logo">
+        <h1><a href="#news">Fio</a></h1>
+      </div>
+      <nav id="desktop-nav" class="nav pc-nav cf"></nav>
+    </div>
+  </header>
+
+  <main id="app" class="main page-main cf"></main>
+
+  <footer class="footer">
+    <p class="copy">© 2026 Fio</p>
+  </footer>
+
+  <script>
+    const viewSelect = document.querySelector('#view-select');
+    const app = document.querySelector('#app');
+    const nav = document.querySelector('#desktop-nav');
+
+    const pageNames = {
+      news: 'News',
+      'news-2': 'News',
+      biography: 'Biography',
+      works: 'Works',
+      'work-detail': 'Works',
+      publications: 'Publications',
+      'publications-2': 'Publications',
+      'publication-detail': 'Publications',
+      articles: 'Articles',
+      information: 'Information',
+      'information-essay': 'Information',
+      'information-image-notes': 'Information',
+      'information-conversation': 'Information',
+      contact: 'Contact'
+    };
+
+    const subNavigation = {
+      news: [
+        ['All', 'news', 'm-news'],
+        ['Event', 'news'],
+        ['Group Exhibition', 'news'],
+        ['News', 'news'],
+        ['Publication', 'news'],
+        ['Solo Exhibition', 'news']
+      ],
+      biography: [
+        ['Fio profile', 'biography', '', 'rinko-kawauchi'],
+        ['Selected Solo Exhibitions', 'biography', '', 'solo-exhibitions'],
+        ['Selected Group Exhibitions', 'biography', '', 'group-exhibitions'],
+        ['Awards', 'biography', '', 'awards'],
+        ['Publications', 'biography', '', 'publications'],
+        ['Major Public Collections', 'biography', '', 'collection']
+      ],
+      works: [
+        ['Window Study', 'works'],
+        ['Soft Orbit', 'works'],
+        ['Field / Weather', 'works', 'jpt'],
+        ['Ambient Measure', 'works'],
+        ['Small Chorus', 'works'],
+        ['The Near, The Far', 'works'],
+        ['Aerial Room', 'works'],
+        ['Ember Notes', 'works', 'jpt'],
+        ['Still Sleep', 'works', 'jpt original-last'],
+        ['Ridge Line', 'works'],
+        ['Four Percent', 'works'],
+        ['The River Receives', 'works', 'jpt'],
+        ['Search for Daylight', 'works'],
+        ['Soft Flock', 'works'],
+        ['Planting / Passing', 'works', 'jpt'],
+        ['Moving Works', 'works', 'video-works'],
+        ['Spatial Views', 'works', 'installation-views']
+      ],
+      articles: [
+        ['Essay', 'articles'],
+        ['Interview', 'articles'],
+        ['Commission', 'articles']
+      ],
+      information: [
+        ['All entries', 'information', 'm-information', 'information'],
+        ['Essay', 'information', '', 'information-essay', 'information-essay'],
+        ['Image Notes', 'information', '', 'information-image-notes', 'information-image-notes'],
+        ['Conversation', 'information', '', 'information-conversation', 'information-conversation']
+      ],
+      none: []
+    };
+
+    function kindFor(page) {
+      if (page.startsWith('news')) return 'news';
+      if (page === 'biography') return 'biography';
+      if (page === 'works' || page === 'work-detail') return 'works';
+      if (page === 'articles') return 'articles';
+      if (page.startsWith('information')) return 'information';
+      return 'none';
+    }
+
+    function navigationMarkup(page) {
+      const current = pageNames[page];
+      const kind = kindFor(page);
+      const mainItems = [
+        ['News', 'news'],
+        ['Biography', 'biography'],
+        ['Works', 'works'],
+        ['Publications', 'publications'],
+        ['Articles', 'articles'],
+        ['Contact', 'contact'],
+        ['Information', 'information']
+      ];
+      const subItems = subNavigation[kind];
+
+      const main = mainItems.map(([label, target]) => {
+        const currentClass = label === current ? ' class="current-menu-item"' : '';
+        const href = '#' + target;
+        const external = '';
+        return '<li' + currentClass + '><a href="' + href + '"' + external + '>' + label + '</a></li>';
+      }).join('');
+
+      const sub = subItems.map(([label, target, classes = '', anchor = '', subPage = '']) => {
+        const currentSubClass = subPage === page ? ' current-menu-item' : '';
+        const allClasses = (classes + currentSubClass).trim();
+        const classAttribute = allClasses ? ' class="' + allClasses + '"' : '';
+        return '<li' + classAttribute + '><a href="#' + (anchor || target) + '">' + label + '</a></li>';
+      }).join('');
+
+      return '<div class="nav-inner-01"><ul class="main-nav">' + main + '</ul>' +
+        '<ul class="lang-nav"><li><a href="#' + page + '" title="EN">EN</a></li><li><a href="#' + page + '" title="CN">CN</a></li></ul></div>' +
+        '<div class="nav-inner-02">' + (sub ? '<ul class="sub-nav">' + sub + '</ul>' : '') + '</div>';
+    }
+
+    function visual(classes, label) {
+      const ratio = classes.includes('portrait') ? [171, 257] :
+        classes.includes('square') ? [257, 257] :
+        classes.includes('landscape') ? [386, 257] :
+        classes.includes('ratio-1200-940') ? [1200, 940] :
+        classes.includes('ratio-1200-1207') ? [1200, 1207] :
+        classes.includes('video-ratio') ? [1200, 675] :
+        classes.includes('template-hero') ? [1200, 750] :
+        classes.includes('template-note') ? [1200, 800] :
+        classes.includes('template-note-tall') ? [800, 1000] :
+        classes.includes('pub-a') ? [180, 252] :
+        classes.includes('pub-b') ? [220, 280] :
+        classes.includes('pub-c') ? [220, 197] :
+        classes.includes('pub-d') ? [225, 285] :
+        classes.includes('pub-e') ? [158, 216] :
+        classes.includes('pub-f') ? [210, 285] :
+        classes.includes('pub-g') ? [105, 148] :
+        classes.includes('pub-h') ? [203, 254] :
+        classes.includes('pub-i') ? [219, 287] :
+        classes.includes('article-a') ? [600, 847] :
+        classes.includes('article-b') ? [600, 848] :
+        classes.includes('article-c') ? [600, 812] :
+        classes.includes('article-d') ? [600, 751] :
+        classes.includes('article-e') ? [600, 849] :
+        classes.includes('article-f') ? [600, 783] : [600, 400];
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + ratio[0] + '" height="' + ratio[1] + '" viewBox="0 0 ' + ratio[0] + ' ' + ratio[1] + '" preserveAspectRatio="none"><rect width="100%" height="100%" fill="#c7cfcc"/></svg>';
+      const src = 'data:image/svg+xml,' + encodeURIComponent(svg);
+      const intrinsic = classes.includes('pub-') || classes.includes('works-img') || classes.includes('template-') ?
+        ' width="' + ratio[0] + '" height="' + ratio[1] + '"' : '';
+      return '<img class="prototype-image ' + classes + '"' + intrinsic + ' src="' + src + '" alt="' + label + '">';
+    }
+
+    function newsItem(category, title, date, place, imageClass, imageLabel) {
+      const image = imageClass ? '<div class="news-img"><span class="news-img-inner">' +
+        visual('post-img news-image ' + imageClass, imageLabel) + '</span></div>' : '';
+      return '<div class="news-item cf">' + image +
+        '<div class="news-text"><p class="category">' + category + '</p><p>' + title + '</p><p>' + date + '</p>' +
+        (place ? '<p><a href="#contact">' + place + '</a></p>' : '') + '</div>' +
+        '</div><hr class="section-line">';
+    }
+
+    function pagination(page, total) {
+      const current = page === 2 ? 2 : 1;
+      const first = total === 'news' ? 'news' : 'publications';
+      const second = total === 'news' ? 'news-2' : 'publications-2';
+      let html = '<nav class="page-numbers-nav" aria-label="Pagination"><ul class="page-numbers">';
+      if (current === 2) html += '<li><a href="#' + first + '">←</a></li>';
+      html += '<li>' + (current === 1 ? '<span class="current">1</span>' : '<a href="#' + first + '">1</a>') + '</li>';
+      html += '<li>' + (current === 2 ? '<span class="current">2</span>' : '<a href="#' + second + '">2</a>') + '</li>';
+      if (current === 1) html += '<li><a href="#' + second + '">→</a></li>';
+      return html + '</ul></nav>';
+    }
+
+    function newsPage(page) {
+      const second = page === 'news-2';
+      const items = second ? [
+        newsItem('Group Exhibition', 'Three Studies of Light', '2026年6月02日–6月29日', 'Prototype Gallery', 'landscape visual-blue', '抽象的蓝灰色展览图像'),
+        newsItem('Event', '关于图像与工具的工作坊', '2026年5月16日', 'Fio Studio', 'portrait visual-ochre', '抽象的赭色活动图像'),
+        newsItem('Publication', 'Field Notes：一册原型出版物', '2026年4月28日', 'Small Press', 'square visual-rose', '抽象的玫瑰色出版物图像')
+      ] : [
+        newsItem('Event', '关于缓慢观看的公开对谈', '2026年7月29日 16:20–17:50', 'Prototype Hall, Tokyo', 'portrait visual-sun', '抽象的浅色现场图像'),
+        newsItem('Publication', 'Field Notes：一册原型出版物', '2026年7月18日', 'Small Press', 'landscape visual-ochre', '抽象的赭色出版物图像'),
+        newsItem('News', '网站内容系统进入第一轮评审', '2026年7月11日', '', '', ''),
+        newsItem('Solo Exhibition', 'Window / Distance', '2026年6月24日–8月16日', 'North Room', 'square visual-blue', '抽象的蓝灰色展览图像'),
+        newsItem('Group Exhibition', 'Material Signals', '2026年6月05日–7月12日', 'Quiet Gallery', 'landscape visual-graphite', '抽象的深灰色展览图像')
+      ];
+      return '<div class="contents news-contents">' + items.join('') + pagination(second ? 2 : 1, 'news') + '</div>';
+    }
+
+    function row(year, events) {
+      return '<ul class="cell-box"><li class="cell-01"><p>' + year + '</p></li><li class="cell-02">' +
+        events.map(event => '<p>' + event + '</p>').join('') + '</li></ul>';
+    }
+
+    function listSet(id, title, body) {
+      return '<div id="' + id + '" class="list-set"><div class="list-title"><p>' + title +
+        '</p></div><div class="list-text">' + body + '</div></div>';
+    }
+
+    function biographyPage() {
+      return '<div class="contents biography-contents"><div class="bio-list cf">' +
+        listSet('rinko-kawauchi', 'Fio', '<p>1989年　出生于中国<br>目前在新加坡生活与工作</p>') +
+        listSet('solo-exhibitions', 'Selected Solo Exhibitions',
+          row('2026', ['Window Study, Fio Studio, Singapore', 'Field Notes, Prototype Hall, Tokyo']) +
+          row('2025', ['Quiet Systems, North Room, Taipei', 'A Small Distance, Kyoto']) +
+          row('2024', ['The Shape of a Pause, Seoul']) +
+          row('2023', ['After the Screen, Singapore'])) +
+        listSet('group-exhibitions', 'Selected Group Exhibitions',
+          row('2026', ['Three Studies of Light, Prototype Gallery']) +
+          row('2025', ['Material Signals, Seoul', 'Soft Hardware, Hong Kong']) +
+          row('2024', ['Quiet Tools, Taipei'])) +
+        listSet('awards', 'Awards and Prizes', row('2025', ['Prototype recognition'])) +
+        listSet('publications', 'Publications', row('2026', ['Field Notes, Small Press']) + row('2024', ['Between Screens, Fio Editions'])) +
+        listSet('collection', 'Major Public Collections', row('2026', ['Collection details will be added after authorization.'])) +
+        '</div></div>';
+    }
+
+    function workItem(title, year, ratioClass, colorClass) {
+      return '<div class="item cf"><a href="#work-detail"><div class="item-inner"><div class="item-image-wrap">' +
+        visual('works-img ' + ratioClass + ' ' + colorClass, title + ' 占位图像') +
+        '</div><div class="item-text"><h1 class="title">' + title + '</h1><p class="year">' + year + '</p></div>' +
+        '</div></a></div>';
+    }
+
+    function worksPage() {
+      return '<div class="contents works-contents original-contents">' +
+        workItem('Window Study', '2026', 'landscape', 'visual-sun') +
+        workItem('Soft Orbit', '2025', 'landscape', 'visual-graphite') +
+        workItem('Field / Weather', '2024', 'ratio-1200-940', 'visual-ochre') +
+        workItem('Ambient Measure', '2023', 'square', 'visual-blue') +
+        workItem('Small Chorus', '2022', 'square', 'visual-rose') +
+        workItem('The Near, The Far', '2021', 'square', 'visual-graphite') +
+        workItem('Aerial Room', '2020', 'square', 'visual-sun') +
+        workItem('Ember Notes', '2019', 'square', 'visual-ochre') +
+        workItem('Still Sleep', '2018', 'square', 'visual-blue') +
+        '</div><div class="contents works-contents project-contents">' +
+        workItem('Four Percent', '2022', 'landscape', 'visual-rose') +
+        workItem('Ridge Line', '2022', 'ratio-1200-1207', 'visual-sun') +
+        workItem('The River Receives', '2021', 'ratio-1200-940', 'visual-graphite') +
+        workItem('Search for Daylight', '2020', 'square', 'visual-blue') +
+        workItem('Soft Flock', '2019', 'landscape', 'visual-ochre') +
+        workItem('Planting / Passing', '2018', 'square', 'visual-rose') +
+        '</div><div class="contents works-contents video-contents">' +
+        '<div class="item cf"><a href="#work-detail"><div class="item-inner"><div class="item-image-wrap">' +
+        visual('works-img video-ratio visual-graphite', '视频作品占位画面') +
+        '</div><div class="item-text"><h1 class="title">Moving Works</h1><p class="year"></p></div></div></a></div>' +
+        '</div><div class="contents works-contents installation-contents">' +
+        '<div class="item cf"><a href="#work-detail"><div class="item-inner"><div class="item-image-wrap"></div>' +
+        '<div class="item-text"><h1 class="title">Spatial Views</h1><p class="year"></p></div></div></a></div></div>';
+    }
+
+    function workDetailPage() {
+      return '<div class="contents single-contents works-single-contents">' +
+        '<div class="item-inner"><div class="media-item">' + visual('media-image landscape visual-graphite', '作品横向媒体占位图像') + '</div></div>' +
+        '<div class="item-inner"><div class="media-pair"><div class="media-item">' + visual('media-image portrait visual-ochre', '作品竖向媒体占位图像') + '</div><div class="media-item">' + visual('media-image portrait visual-sun', '作品第二张竖向媒体占位图像') + '</div></div></div>' +
+        '<div class="item-inner"><div class="media-item">' + visual('media-image landscape visual-blue', '作品第二张横向媒体占位图像') + '</div></div>' +
+        '</div>';
+    }
+
+    function publicationItem(title, year, cover, color) {
+      return '<div class="item"><a href="#publication-detail"><div class="item-inner"><div class="item-image">' +
+        visual('cover ' + cover + ' ' + color, title + ' 封面占位图像') +
+        '</div><div class="item-text"><h1 class="title">' + title + '</h1><p class="year">' + year + '</p></div>' +
+        '</div></a></div>';
+    }
+
+    function publicationsPage(page) {
+      const second = page === 'publications-2';
+      const items = second ? [
+        publicationItem('Prototype Archive', '2022', 'pub-a', 'visual-blue'),
+        publicationItem('Small Machines', '2021', 'pub-b', 'visual-graphite'),
+        publicationItem('Open Window', '2021', 'pub-c', 'visual-rose')
+      ] : [
+        publicationItem('Quiet Field', '2026', 'pub-a', 'visual-sun'),
+        publicationItem('Objects at Rest', '2025', 'pub-b', 'visual-ochre'),
+        publicationItem('Signal Manual', '2025', 'pub-c', 'visual-graphite'),
+        publicationItem('July Notes', '2024', 'pub-d', 'visual-rose'),
+        publicationItem('Between Screens', '2024', 'pub-e', 'visual-blue'),
+        publicationItem('Time, Light', '2023', 'pub-f', 'visual-sun'),
+        publicationItem('Small Index', '2022', 'pub-g', 'visual-blue'),
+        publicationItem('Early Notes', '2021', 'pub-h', 'visual-ochre'),
+        publicationItem('Illuminance Field', '2020', 'pub-i', 'visual-graphite')
+      ];
+      return '<div class="contents publications-contents">' + items.join('') + pagination(second ? 2 : 1, 'publications') + '</div>';
+    }
+
+    function articlesPage() {
+      const items = [
+        ['Interview', 'Reading Slowly', '2026', 'article-a visual-blue'],
+        ['Interview', 'Tools and Time', '2025', 'article-b visual-graphite'],
+        ['Essay', 'Light Study', '2024', 'article-c visual-ochre'],
+        ['Essay', 'A Room for Distance', '2023', 'article-d visual-rose'],
+        ['Interview', 'Material and Memory', '2022', 'article-e visual-sun'],
+        ['Commission', 'An Object Opens', '2021', 'article-f visual-blue']
+      ];
+      return '<div class="contents articles-contents">' + items.map(([category, title, year, classes]) =>
+        '<div class="item"><a target="_blank" href="#publication-detail"><div class="item-inner"><div class="item-image">' +
+        visual('articles-img ' + classes, title + ' 文章封面占位图像') +
+        '</div><div class="item-text"><p class="category">' + category + '</p><h1 class="title">' + title + '</h1><p class="year">' + year + '</p></div>' +
+        '</div></a></div>'
+      ).join('') + '</div>';
+    }
+
+    function publicationDetailPage() {
+      return '<div class="contents publications-single-contents"><div class="item-image-set publication-slider" aria-label="出版物图片轮播占位区域">' +
+        '<div class="slide"></div><div class="slide"></div><span class="slider-hint">01 / 06　click to change</span></div>' +
+        '<div class="item-text"><h1 class="title">Quiet Field — A notebook of images and intervals</h1><p class="year">2026</p>' +
+        '<div class="description"><p>这是一段用于验证出版物详情页宽度、图像与文字距离的 Fio 占位说明。实际内容会在素材、授权和校对完成后写入 Markdown。</p><p>图片轮播区域、说明段落与规格表保留源头内容页的阅读顺序，但不复制源站文字或图片。</p></div>' +
+        '<div class="spec-set"><div class="spec-row"><p class="spec-label">Title</p><p class="spec-value">Quiet Field</p></div>' +
+        '<div class="spec-row"><p class="spec-label">Editor</p><p class="spec-value">Fio Studio</p></div><div class="spec-row"><p class="spec-label">Format</p><p class="spec-value">240 × 180 mm · softcover · 96 pages</p></div>' +
+        '<div class="spec-row"><p class="spec-label">Language</p><p class="spec-value">中文 / English</p></div><div class="spec-row"><p class="spec-label">Year</p><p class="spec-value">2026</p></div></div></div></div>';
+    }
+
+    function templateMedia(classes, label, caption) {
+      return '<figure class="template-media"><div class="template-image ' + classes + '" role="img" aria-label="' + label + '"></div>' +
+        (caption ? '<figcaption class="template-caption">' + caption + '</figcaption>' : '') + '</figure>';
+    }
+
+    function informationEntry(type, title, date, summary, template, target) {
+      return '<article class="information-entry"><p class="entry-type">' + type + ' · ' + date + '</p>' +
+        '<h2>' + title + '</h2><p class="entry-template">Template: ' + template + '</p>' +
+        '<p class="entry-summary">' + summary + '</p><a class="entry-link" href="#' + target + '">Open template →</a></article>';
+    }
+
+    function informationPage() {
+      return '<div class="contents information-contents"><section id="information" class="information-index">' +
+        '<h1 class="title">Information</h1>' +
+        '<p class="index-intro">A quiet place for notes, images and conversations. New entries can be written in Markdown and placed into one of the three layouts below.</p>' +
+        informationEntry('Essay', 'A Small Measure of Attention', '2026.07.31', 'A narrow reading template for a considered essay, a field note or a longer project statement.', 'narrow essay', 'information-essay') +
+        informationEntry('Image Notes', 'Rooms for Looking', '2026.07.18', 'An image-led template for a sequence of photographs, software captures or material studies with short notes.', 'image notes', 'information-image-notes') +
+        informationEntry('Conversation', 'Making Time for the Unfinished', '2026.06.24', 'A dialogue template for interviews, process notes and bilingual question-and-answer pieces.', 'conversation', 'information-conversation') +
+        '</section></div>';
+    }
+
+    function informationEssayPage() {
+      return '<div class="contents information-contents"><article id="information-essay" class="information-article narrow essay">' +
+        '<header class="article-head"><p class="article-kicker">Essay · Information</p><h1 class="title">A Small Measure of Attention</h1><p class="article-date">2026.07.31</p>' +
+        '<p class="article-lead">这是一套窄栏长文模板。标题、日期、导语、主图、章节和引用都可以保留，也可以只留下文章真正需要的部分。</p></header>' +
+        templateMedia('hero visual-sun', 'Essay hero placeholder', 'Hero image · replace with an authorized image, diagram or interface view.') +
+        '<div class="article-body"><h2>Beginning with a measure</h2>' +
+        '<p>有些文章从一个很小的观察开始：一束光如何停留在桌面上，一个界面如何让人慢下来，或者一件物品如何在房间里改变距离。</p>' +
+        '<p>正文使用稳定的窄阅读列。每个段落都保持清楚的呼吸，中文与 English 可以自然地出现在同一篇文章中。</p>' +
+        '<blockquote>“The image does not need to explain everything. It only needs to leave enough room for looking.”</blockquote>' +
+        '<h2>Writing with the material</h2><p>这里可以继续写项目背景、方法、过程、引用或链接。小标题不是装饰，而是让长文在侧栏和滚动阅读中保持可扫描性。</p>' +
+        '<p>When the article is ready, replace this text, add or remove a section, and keep the same frontmatter. No layout code is required for a normal entry.</p></div>' +
+        '<a class="information-back" href="#information">← Information</a></article></div>';
+    }
+
+    function informationImageNotesPage() {
+      return '<div class="contents information-contents"><article id="information-image-notes" class="information-article image-notes">' +
+        '<header class="article-head"><p class="article-kicker">Image Notes · Information</p><h1 class="title">Rooms for Looking</h1><p class="article-date">2026.07.18</p>' +
+        '<p class="article-lead">一组图片和短文字的模板。图片顺序、比例和说明可以按每篇文章简单增删，不需要重新设计页面。</p></header>' +
+        '<div class="image-note-list">' +
+        '<div class="image-note-item">' + templateMedia('image-note visual-blue', 'Image note one placeholder', '01 / 04 · Singapore · 2026') +
+        '<div class="note-copy"><p class="article-kicker">01 — Threshold</p><p>第一张图的说明可以很短，也可以是一段与图像并置的观察。The caption remains quiet and close to the image.</p></div></div>' +
+        '<div class="image-note-item">' + templateMedia('image-note-tall visual-ochre', 'Image note two placeholder', '02 / 04 · Window study · 2026') +
+        '<div class="note-copy"><p class="article-kicker">02 — Distance</p><p>竖图保留自身比例，文字仍然回到窄列，形成川内式的图片—说明—留白节奏。</p></div></div>' +
+        '<div class="image-note-item">' + templateMedia('image-note visual-graphite', 'Image note three placeholder', '03 / 04 · Material study · 2026') +
+        '<div class="note-copy"><p class="article-kicker">03 — Surface</p><p>最后一张可以是照片、软件截屏、硬件细节或 mixed media，只要在 frontmatter 中声明媒体来源与替代文字。</p></div></div>' +
+        '</div><a class="information-back" href="#information">← Information</a></article></div>';
+    }
+
+    function conversationRow(speaker, paragraphs) {
+      return '<div class="conversation-row"><p class="conversation-speaker">' + speaker + '</p><div class="conversation-answer">' +
+        paragraphs.map(paragraph => '<p>' + paragraph + '</p>').join('') + '</div></div>';
+    }
+
+    function informationConversationPage() {
+      return '<div class="contents information-contents"><article id="information-conversation" class="information-article narrow conversation">' +
+        '<header class="article-head"><p class="article-kicker">Conversation · Information</p><h1 class="title">Making Time for the Unfinished</h1><p class="article-date">2026.06.24</p>' +
+        '<p class="article-lead">适合采访、对谈、创作过程记录和中英文并置的正文模板。提问者与回答者的标签保持固定宽度，长回答自然向下延伸。</p></header>' +
+        templateMedia('hero visual-rose', 'Conversation hero placeholder', 'Conversation image · optional') +
+        '<div class="conversation-list">' +
+        conversationRow('Fio', ['你如何开始一个还没有答案的项目？', 'I usually begin with a condition rather than a conclusion. The first task is to notice what the material is already doing.']) +
+        conversationRow('Guest', ['那么工具在其中扮演什么角色？', '工具决定速度、尺度和重复的方式，但它不决定最后要说什么。']) +
+        conversationRow('Fio', ['这篇文章可以如何继续使用图片？', '在任意回答之间插入一个 image group，或在对谈结束后加入一段短说明即可。']) +
+        conversationRow('Guest', ['最后想留下什么？', 'A useful ending can remain open. It gives the reader a place to continue the conversation.']) +
+        '</div><a class="information-back" href="#information">← Information</a></article></div>';
+    }
+
+    function contactPage() {
+      return '<div class="contents contact-contents"><div class="contact-list cf">' +
+        listSet('general', 'Fio Studio', '<p>Mail: <a href="mailto:studio@example.com">studio@example.com</a></p><p>&nbsp;</p><p>项目合作与委托请通过以上邮箱联系。</p><p>请在邮件中附上项目概要、时间范围与预算信息。</p><p>我们会在确认内容与授权后回复。</p>') +
+        '<hr class="section-line">' +
+        listSet('representation', 'Print and collaboration inquiries', '<p>Singapore: Fio Studio</p><p>Japan: partner information will be confirmed.</p><p>Europe: partner information will be confirmed.</p><p>USA: partner information will be confirmed.</p><p>Other regions: please write to the studio.</p>') +
+        '<hr class="section-line"></div></div>';
+    }
+
+    function pageContent(page) {
+      if (page === 'news' || page === 'news-2') return newsPage(page);
+      if (page === 'biography') return biographyPage();
+      if (page === 'works') return worksPage();
+      if (page === 'work-detail') return workDetailPage();
+      if (page === 'publications' || page === 'publications-2') return publicationsPage(page);
+      if (page === 'publication-detail') return publicationDetailPage();
+      if (page === 'articles') return articlesPage();
+      if (page === 'information') return informationPage();
+      if (page === 'information-essay') return informationEssayPage();
+      if (page === 'information-image-notes') return informationImageNotesPage();
+      if (page === 'information-conversation') return informationConversationPage();
+      return contactPage();
+    }
+
+    function currentPage() {
+      const candidate = location.hash.slice(1);
+      return pageNames[candidate] ? candidate : 'news';
+    }
+
+    function render() {
+      const page = currentPage();
+      nav.innerHTML = navigationMarkup(page);
+      const archive = page === 'works' || page === 'publications' || page === 'publications-2' || page === 'articles';
+      const single = page === 'work-detail' || page === 'publication-detail';
+      app.className = 'main page-main cf' + (archive ? ' archive-main' : '') + (single ? ' single-main' : '');
+      app.innerHTML = '<div class="inner page-inner' + (archive ? ' archive-inner' : '') + (single ? ' single-inner' : '') + ' cf">' + pageContent(page) + '</div>';
+      viewSelect.value = page;
+      document.body.classList.toggle('review-clean', new URLSearchParams(location.search).has('clean'));
+      document.title = 'Fio — ' + pageNames[page] + ' source-aligned desktop review';
+    }
+
+    viewSelect.addEventListener('change', event => {
+      location.hash = event.target.value;
+    });
+
+    window.addEventListener('hashchange', render);
+    render();
+  </script>
+</body>
+</html>

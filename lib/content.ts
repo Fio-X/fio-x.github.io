@@ -1,19 +1,23 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import matter from "gray-matter";
+import { sitePath } from "@/lib/site-constants";
 
-const CONTENT_DIRECTORY = join(process.cwd(), "content");
-const ARTICLE_DIRECTORY = join(CONTENT_DIRECTORY, "articles");
-const WORK_DIRECTORY = join(CONTENT_DIRECTORY, "works");
-const PAGE_DIRECTORY = join(CONTENT_DIRECTORY, "pages");
-const PAGE_SLUGS = ["information", "biography", "publications", "contact"] as const;
+const contentDirectory = () => join(process.cwd(), "content");
+const articleDirectory = () => join(contentDirectory(), "articles");
+const workDirectory = () => join(contentDirectory(), "works");
+const publicationDirectory = () => join(contentDirectory(), "publications");
+const pageDirectory = () => join(contentDirectory(), "pages");
+const PAGE_SLUGS = ["information", "biography", "contact"] as const;
 export type PageSlug = (typeof PAGE_SLUGS)[number];
-const PUBLIC_DIRECTORY = join(process.cwd(), "public");
+const publicDirectory = () => join(process.cwd(), "public");
 const PUBLIC_MEDIA_PREFIX = "/media/";
 const MEDIA_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"]);
 const MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/g;
 
 export const STATIC_EXPORT_PLACEHOLDER_SLUG = "__static-export-placeholder__";
+export const WORK_KINDS = ["photography", "software", "hardware", "mixed"] as const;
+export type WorkKind = (typeof WORK_KINDS)[number];
 
 export interface MediaItem {
   src: string;
@@ -21,11 +25,34 @@ export interface MediaItem {
   decorative: boolean;
 }
 
-export type ArticleSection = "news" | "articles";
+export type MediaGroupLayout = "single" | "pair";
+
+export interface MediaGroup {
+  layout: MediaGroupLayout;
+  items: MediaItem[];
+}
+
+export const ARTICLE_TEMPLATES = ["essay", "image-notes", "conversation"] as const;
+export type ArticleTemplate = (typeof ARTICLE_TEMPLATES)[number];
+/** Legacy values are accepted only by compatibility helpers, never by new content. */
+export type ArticleSection = "information" | "news" | "articles";
+export const ARTICLE_SECTIONS = ["information"] as const;
+
+export const NEWS_CATEGORIES = ["Event", "Group Exhibition", "News", "Publication", "Solo Exhibition"] as const;
+export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
+
+export interface NewsMeta {
+  category?: NewsCategory;
+  dateLabel?: string;
+  place?: string;
+  placeUrl?: string;
+}
 
 export interface Article {
   slug: string;
+  /** Legacy frontmatter is normalized to information during parsing. */
   section: ArticleSection;
+  template: ArticleTemplate;
   title: string;
   date: string;
   updated?: string;
@@ -39,16 +66,35 @@ export interface Article {
 
 export interface Work {
   slug: string;
+  kind: WorkKind;
   title: string;
   date: string;
   updated?: string;
   summary: string;
+  role?: string;
   status?: string;
   projectUrl?: string;
   tags: string[];
   draft: boolean;
   cover?: string;
+  /** Flat media remains available for simple work files and backwards compatibility. */
   media: MediaItem[];
+  /** Explicit groups reproduce the prototype's single / pair media stream. */
+  mediaGroups: MediaGroup[];
+  body: string;
+}
+
+export interface Publication {
+  slug: string;
+  title: string;
+  date: string;
+  updated?: string;
+  description?: string;
+  publisher?: string;
+  authors?: string[];
+  draft: boolean;
+  cover?: string;
+  coverAlt?: string;
   body: string;
 }
 
@@ -57,17 +103,28 @@ export interface PageSection {
   label: string;
 }
 
+export interface TimelineEntry {
+  section: string;
+  year: string;
+  text: string;
+}
+
 export interface ContentPage {
   slug: PageSlug;
   title: string;
+  date?: string;
+  updated?: string;
   description?: string;
+  draft: boolean;
   sections: PageSection[];
+  timeline: TimelineEntry[];
   body: string;
 }
 
 export interface ContentCollection {
   articles: Article[];
   works: Work[];
+  publications: Publication[];
   categories: string[];
   tags: string[];
 }
@@ -79,22 +136,34 @@ export class ContentValidationError extends Error {
   }
 }
 
-export function contentHref(slug: string) { return `/articles/${slug}`; }
-export function workHref(slug: string) { return `/works/${slug}`; }
-export function categoryHref(category: string) { return `/categories/${encodeURIComponent(category)}`; }
-export function tagHref(tag: string) { return `/tags/${encodeURIComponent(tag)}`; }
+export function contentHref(slug: string, section: ArticleSection = "information") {
+  void section;
+  return sitePath(`/information/${slug}`);
+}
+export function articleHref(article: Pick<Article, "slug">) { return contentHref(article.slug); }
+export function workHref(slug: string) { return sitePath(`/works/${slug}`); }
+export function categoryHref(category: string) { return sitePath(`/categories/${encodeURIComponent(category)}`); }
+export function tagHref(tag: string) { return sitePath(`/tags/${encodeURIComponent(tag)}`); }
+
+export function staticSlugParams(slugs: readonly string[]) {
+  return (slugs.length > 0 ? slugs : [STATIC_EXPORT_PLACEHOLDER_SLUG]).map((slug) => ({ slug }));
+}
 
 export function getContent(): ContentCollection {
-  const articles = readCollection(ARTICLE_DIRECTORY, parseArticle);
-  const works = readCollection(WORK_DIRECTORY, parseWork);
+  const articles = readCollection(articleDirectory(), parseArticle);
+  const works = readCollection(workDirectory(), parseWork);
+  const publications = readCollection(publicationDirectory(), parsePublication);
   assertUniqueSlugs(articles, "article");
   assertUniqueSlugs(works, "work");
+  assertUniqueSlugs(publications, "publication");
 
   const publishedArticles = articles.filter((article) => !article.draft).sort(byNewest);
   const publishedWorks = works.filter((work) => !work.draft).sort(byNewest);
+  const publishedPublications = publications.filter((publication) => !publication.draft).sort(byNewest);
   return {
     articles: publishedArticles,
     works: publishedWorks,
+    publications: publishedPublications,
     categories: uniqueSorted(publishedArticles.map((article) => article.category)),
     tags: uniqueSorted([...publishedArticles.flatMap((article) => article.tags), ...publishedWorks.flatMap((work) => work.tags)]),
   };
@@ -106,31 +175,45 @@ export function validateContent() {
 }
 
 export function getReferencedMedia() {
-  const { articles, works } = getContent();
+  const { articles, works, publications } = getContent();
   return new Set([
     ...articles.flatMap((article) => article.cover ? [article.cover] : []),
     ...works.flatMap((work) => [
       ...(work.cover ? [work.cover] : []),
       ...work.media.map((media) => media.src),
+      ...work.mediaGroups.flatMap((group) => group.items.map((media) => media.src)),
     ]),
+    ...publications.flatMap((publication) => publication.cover ? [publication.cover] : []),
   ]);
 }
 
-export function getArticleBySlug(slug: string) { return getContent().articles.find((article) => article.slug === slug); }
+export function getArticleBySlug(slug: string, sections?: readonly ArticleSection[]) {
+  void sections;
+  return getContent().articles.find((article) => article.slug === slug);
+}
 export function getWorkBySlug(slug: string) { return getContent().works.find((work) => work.slug === slug); }
 export function getArticlesForCategory(category: string) { return getContent().articles.filter((article) => article.category === category); }
 export function getArticlesForTag(tag: string) { return getContent().articles.filter((article) => article.tags.includes(tag)); }
-export function getArticlesForSection(section: ArticleSection) { return getContent().articles.filter((article) => article.section === section); }
+export function getWorksForTag(tag: string) { return getContent().works.filter((work) => work.tags.includes(tag)); }
+export function getArticlesForSection(section: ArticleSection = "information") {
+  void section;
+  return getContent().articles;
+}
+
+export function hasPageContent(page: ContentPage | undefined) {
+  return Boolean(page && !page.draft && (page.body.trim() || page.sections.length > 0 || page.timeline.length > 0));
+}
 
 export function getPage(slug: PageSlug): ContentPage | undefined {
-  const file = join(PAGE_DIRECTORY, `${slug}.md`);
+  const file = join(pageDirectory(), `${slug}.md`);
   if (!existsSync(file)) return undefined;
   const document = parseDocument(file);
   const data = expectObject(document.data, file);
-  assertAllowedKeys(data, ["title", "description", "sections"], file);
+  assertAllowedKeys(data, ["title", "date", "updated", "description", "sections", "timeline", "draft"], file);
   assertMarkdownImages(document.content, file);
   const sections = requiredPageSections(data, file, document.content);
-  return { slug, title: requiredString(data, "title", file), description: optionalString(data, "description", file), sections, body: document.content.trim() };
+  const timeline = requiredTimeline(data, file);
+  return { slug, title: requiredString(data, "title", file), date: optionalDate(data, "date", file), updated: optionalDate(data, "updated", file), description: optionalString(data, "description", file), draft: optionalBoolean(data, "draft", file), sections, timeline, body: document.content.trim() };
 }
 
 export function getAboutPage() { return getPage("information"); }
@@ -152,10 +235,10 @@ function readCollection<T>(directory: string, parse: (slug: string, file: string
 function parseArticle(slug: string, file: string): Article {
   const document = parseDocument(file);
   const data = expectObject(document.data, file);
-  assertAllowedKeys(data, ["title", "date", "updated", "description", "category", "section", "tags", "draft", "cover"], file);
+  assertAllowedKeys(data, ["title", "date", "updated", "description", "category", "section", "template", "tags", "draft", "cover"], file);
   assertMarkdownImages(document.content, file);
   return {
-    slug, section: requiredArticleSection(data, file), title: requiredString(data, "title", file), date: requiredDate(data, "date", file), updated: optionalDate(data, "updated", file),
+    slug, section: "information", template: requiredArticleTemplate(data, file), title: requiredString(data, "title", file), date: requiredDate(data, "date", file), updated: optionalDate(data, "updated", file),
     description: requiredString(data, "description", file), category: requiredString(data, "category", file), tags: requiredTags(data, file),
     draft: optionalBoolean(data, "draft", file), cover: optionalMediaPath(data, "cover", file), body: document.content.trim(),
   };
@@ -164,12 +247,26 @@ function parseArticle(slug: string, file: string): Article {
 function parseWork(slug: string, file: string): Work {
   const document = parseDocument(file);
   const data = expectObject(document.data, file);
-  assertAllowedKeys(data, ["title", "date", "updated", "summary", "status", "projectUrl", "tags", "draft", "cover", "media"], file);
+  assertAllowedKeys(data, ["kind", "title", "date", "updated", "summary", "role", "status", "projectUrl", "tags", "draft", "cover", "media", "mediaGroups"], file);
+  assertMarkdownImages(document.content, file);
+  const media = requiredMedia(data, file);
+  const mediaGroups = requiredMediaGroups(data, file, media);
+  return {
+    slug, kind: requiredWorkKind(data, file), title: requiredString(data, "title", file), date: requiredDate(data, "date", file), updated: optionalDate(data, "updated", file),
+    summary: requiredString(data, "summary", file), role: optionalString(data, "role", file), status: optionalString(data, "status", file), projectUrl: optionalUrl(data, "projectUrl", file),
+    tags: requiredTags(data, file), draft: optionalBoolean(data, "draft", file), cover: optionalMediaPath(data, "cover", file), media, mediaGroups, body: document.content.trim(),
+  };
+}
+
+function parsePublication(slug: string, file: string): Publication {
+  const document = parseDocument(file);
+  const data = expectObject(document.data, file);
+  assertAllowedKeys(data, ["title", "date", "updated", "description", "publisher", "authors", "draft", "cover", "coverAlt"], file);
   assertMarkdownImages(document.content, file);
   return {
     slug, title: requiredString(data, "title", file), date: requiredDate(data, "date", file), updated: optionalDate(data, "updated", file),
-    summary: requiredString(data, "summary", file), status: optionalString(data, "status", file), projectUrl: optionalUrl(data, "projectUrl", file),
-    tags: requiredTags(data, file), draft: optionalBoolean(data, "draft", file), cover: optionalMediaPath(data, "cover", file), media: requiredMedia(data, file), body: document.content.trim(),
+    description: optionalString(data, "description", file), publisher: optionalString(data, "publisher", file), authors: optionalStrings(data, "authors", file),
+    draft: optionalBoolean(data, "draft", file), cover: optionalMediaPath(data, "cover", file), coverAlt: optionalString(data, "coverAlt", file), body: document.content.trim(),
   };
 }
 
@@ -201,6 +298,13 @@ function optionalString(data: Record<string, unknown>, key: string, file: string
   return value.trim();
 }
 
+function optionalStrings(data: Record<string, unknown>, key: string, file: string) {
+  const value = data[key];
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) throw new ContentValidationError(`${file}: ${key} must be an array of non-empty strings`);
+  return value.map((item) => (item as string).trim());
+}
+
 function requiredDate(data: Record<string, unknown>, key: string, file: string) {
   const value = optionalDate(data, key, file);
   if (!value) throw new ContentValidationError(`${file}: ${key} must be an ISO date (YYYY-MM-DD)`);
@@ -214,10 +318,16 @@ function optionalDate(data: Record<string, unknown>, key: string, file: string) 
   return value;
 }
 
-function requiredArticleSection(data: Record<string, unknown>, file: string): ArticleSection {
-  const section = requiredString(data, "section", file);
-  if (section !== "news" && section !== "articles") throw new ContentValidationError(`${file}: section must be news or articles`);
-  return section;
+function requiredArticleTemplate(data: Record<string, unknown>, file: string): ArticleTemplate {
+  const template = optionalString(data, "template", file) ?? "essay";
+  if (!ARTICLE_TEMPLATES.includes(template as ArticleTemplate)) throw new ContentValidationError(`${file}: template must be essay, image-notes, or conversation`);
+  return template as ArticleTemplate;
+}
+
+function requiredWorkKind(data: Record<string, unknown>, file: string): WorkKind {
+  const kind = optionalString(data, "kind", file) ?? "photography";
+  if (!WORK_KINDS.includes(kind as WorkKind)) throw new ContentValidationError(`${file}: kind must be photography, software, hardware, or mixed`);
+  return kind as WorkKind;
 }
 
 function requiredPageSections(data: Record<string, unknown>, file: string, body: string): PageSection[] {
@@ -235,6 +345,21 @@ function requiredPageSections(data: Record<string, unknown>, file: string, body:
   });
   if (new Set(sections.map((section) => section.id)).size !== sections.length) throw new ContentValidationError(`${file}: sections must not contain duplicate ids`);
   return sections;
+}
+
+function requiredTimeline(data: Record<string, unknown>, file: string): TimelineEntry[] {
+  const value = data.timeline;
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new ContentValidationError(`${file}: timeline must be an array`);
+  return value.map((item, index) => {
+    const entry = expectObject(item, `${file}: timeline[${index}]`);
+    assertAllowedKeys(entry, ["section", "year", "text"], `${file}: timeline[${index}]`);
+    return {
+      section: requiredString(entry, "section", `${file}: timeline[${index}]`),
+      year: requiredString(entry, "year", `${file}: timeline[${index}]`),
+      text: requiredString(entry, "text", `${file}: timeline[${index}]`),
+    };
+  });
 }
 
 function requiredTags(data: Record<string, unknown>, file: string) {
@@ -261,14 +386,38 @@ function requiredMedia(data: Record<string, unknown>, file: string): MediaItem[]
   const value = data.media;
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new ContentValidationError(`${file}: media must be an array`);
+  return parseMediaItems(value, file, "media");
+}
+
+function requiredMediaGroups(data: Record<string, unknown>, file: string, flatMedia: MediaItem[]): MediaGroup[] {
+  const value = data.mediaGroups;
+  if (value === undefined) return flatMedia.map((item) => ({ layout: "single", items: [item] }));
+  if (!Array.isArray(value)) throw new ContentValidationError(`${file}: mediaGroups must be an array`);
+  const groups = value.map((item, index) => {
+    const entry = expectObject(item, `${file}: mediaGroups[${index}]`);
+    assertAllowedKeys(entry, ["layout", "items"], `${file}: mediaGroups[${index}]`);
+    const layout = requiredString(entry, "layout", `${file}: mediaGroups[${index}]`);
+    if (layout !== "single" && layout !== "pair") throw new ContentValidationError(`${file}: mediaGroups[${index}].layout must be single or pair`);
+    const items = entry.items;
+    if (!Array.isArray(items)) throw new ContentValidationError(`${file}: mediaGroups[${index}].items must be an array`);
+    const parsedItems = parseMediaItems(items, file, `mediaGroups[${index}].items`);
+    if (layout === "single" && parsedItems.length !== 1) throw new ContentValidationError(`${file}: mediaGroups[${index}] with single layout must contain one item`);
+    if (layout === "pair" && parsedItems.length !== 2) throw new ContentValidationError(`${file}: mediaGroups[${index}] with pair layout must contain two items`);
+    return { layout, items: parsedItems } as MediaGroup;
+  });
+  if (flatMedia.length > 0 && groups.length > 0) throw new ContentValidationError(`${file}: use media or mediaGroups, not both`);
+  return groups;
+}
+
+function parseMediaItems(value: unknown[], file: string, key: string): MediaItem[] {
   const media = value.map((item, index) => {
-    const entry = expectObject(item, `${file}: media[${index}]`);
-    assertAllowedKeys(entry, ["src", "alt", "decorative"], `${file}: media[${index}]`);
+    const entry = expectObject(item, `${file}: ${key}[${index}]`);
+    assertAllowedKeys(entry, ["src", "alt", "decorative"], `${file}: ${key}[${index}]`);
     const decorative = entry.decorative === true;
-    if (entry.decorative !== undefined && typeof entry.decorative !== "boolean") throw new ContentValidationError(`${file}: media[${index}].decorative must be a boolean`);
-    const src = validateMediaPath(requiredString(entry, "src", `${file}: media[${index}]`), file, `media[${index}].src`);
+    if (entry.decorative !== undefined && typeof entry.decorative !== "boolean") throw new ContentValidationError(`${file}: ${key}[${index}].decorative must be a boolean`);
+    const src = validateMediaPath(requiredString(entry, "src", `${file}: ${key}[${index}]`), file, `${key}[${index}].src`);
     const alt = entry.alt;
-    if (typeof alt !== "string" || (alt.trim() === "" && !decorative)) throw new ContentValidationError(`${file}: media[${index}].alt must be non-empty unless decorative is true`);
+    if (typeof alt !== "string" || (alt.trim() === "" && !decorative)) throw new ContentValidationError(`${file}: ${key}[${index}].alt must be non-empty unless decorative is true`);
     return { src, alt: alt.trim(), decorative };
   });
   if (new Set(media.map((item) => item.src)).size !== media.length) throw new ContentValidationError(`${file}: media paths must not contain duplicates`);
@@ -279,8 +428,9 @@ function validateMediaPath(value: string, file: string, key: string) {
   if (!value.startsWith(PUBLIC_MEDIA_PREFIX) || value.includes("..") || value.includes("\\")) throw new ContentValidationError(`${file}: ${key} must be a local ${PUBLIC_MEDIA_PREFIX} path`);
   const extension = value.slice(value.lastIndexOf(".")).toLowerCase();
   if (!MEDIA_EXTENSIONS.has(extension)) throw new ContentValidationError(`${file}: ${key} must use an allowed image extension`);
-  const absolutePath = resolve(PUBLIC_DIRECTORY, `.${value}`);
-  if (!absolutePath.startsWith(`${PUBLIC_DIRECTORY}/`) || !existsSync(absolutePath)) throw new ContentValidationError(`${file}: ${key} references a missing public media file`);
+  const publicRoot = publicDirectory();
+  const absolutePath = resolve(publicRoot, `.${value}`);
+  if (!absolutePath.startsWith(`${publicRoot}/`) || !existsSync(absolutePath)) throw new ContentValidationError(`${file}: ${key} references a missing public media file`);
   return value;
 }
 
