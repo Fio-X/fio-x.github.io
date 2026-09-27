@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# kept in the local checkout only: agent notes and project docs
+/AGENTS.md
+/CLAUDE.md
+/docs/
