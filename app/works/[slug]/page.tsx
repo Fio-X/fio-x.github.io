@@ -5,6 +5,7 @@ import { ContentBody } from "@/components/content-body";
 import { SiteShell } from "@/components/site-shell";
 import { getContent, getWorkBySlug, staticSlugParams, tagHref, workHref } from "@/lib/content";
 import { workSectionItems } from "@/lib/navigation";
+import { shareMetadata } from "@/lib/share";
 import { sitePath } from "@/lib/site-constants";
 
 interface Props { params: Promise<{ slug: string }> }
@@ -16,7 +17,7 @@ export async function generateStaticParams() {
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const work = getWorkBySlug((await params).slug);
-  return work ? { title: work.title, description: work.summary, alternates: { canonical: workHref(work.slug) } } : {};
+  return work ? { title: work.title, description: work.summary, alternates: { canonical: workHref(work.slug) }, ...shareMetadata({ url: workHref(work.slug), image: work.cover ?? work.media[0]?.src, imageAlt: work.cover ? undefined : work.media[0]?.alt }) } : {};
 }
 
 export default async function WorkPage({ params }: Props) {

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ContentBody } from "@/components/content-body";
 import { SiteShell } from "@/components/site-shell";
 import { getContent, staticSlugParams } from "@/lib/content";
+import { shareMetadata } from "@/lib/share";
 import { sitePath } from "@/lib/site-constants";
 
 interface Props { params: Promise<{ slug: string }> }
@@ -14,7 +15,9 @@ export function generateStaticParams() { return staticSlugParams(getContent().pu
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const publication = getContent().publications.find((item) => item.slug === slug);
-  return publication ? { title: publication.title, description: publication.description, alternates: { canonical: sitePath(`/publications/${publication.slug}`) } } : {};
+  if (!publication) return {};
+  const url = sitePath(`/publications/${publication.slug}`);
+  return { title: publication.title, description: publication.description, alternates: { canonical: url }, ...shareMetadata({ url, image: publication.cover, imageAlt: publication.coverAlt }) };
 }
 
 export default async function PublicationPage({ params }: Props) {
