@@ -34,24 +34,12 @@ export interface MediaGroup {
 
 export const ARTICLE_TEMPLATES = ["essay", "image-notes", "conversation"] as const;
 export type ArticleTemplate = (typeof ARTICLE_TEMPLATES)[number];
-/** Legacy values are accepted only by compatibility helpers, never by new content. */
-export type ArticleSection = "information" | "news" | "articles";
-export const ARTICLE_SECTIONS = ["information"] as const;
 
 export const NEWS_CATEGORIES = ["Event", "Group Exhibition", "News", "Publication", "Solo Exhibition"] as const;
 export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
 
-export interface NewsMeta {
-  category?: NewsCategory;
-  dateLabel?: string;
-  place?: string;
-  placeUrl?: string;
-}
-
 export interface Article {
   slug: string;
-  /** Legacy frontmatter is normalized to information during parsing. */
-  section: ArticleSection;
   template: ArticleTemplate;
   title: string;
   date: string;
@@ -136,11 +124,7 @@ export class ContentValidationError extends Error {
   }
 }
 
-export function contentHref(slug: string, section: ArticleSection = "information") {
-  void section;
-  return sitePath(`/information/${slug}`);
-}
-export function articleHref(article: Pick<Article, "slug">) { return contentHref(article.slug); }
+export function articleHref(article: Pick<Article, "slug">) { return sitePath(`/information/${article.slug}`); }
 export function workHref(slug: string) { return sitePath(`/works/${slug}`); }
 export function categoryHref(category: string) { return sitePath(`/categories/${encodeURIComponent(category)}`); }
 export function tagHref(tag: string) { return sitePath(`/tags/${encodeURIComponent(tag)}`); }
@@ -205,18 +189,11 @@ export function getReferencedMedia() {
 
 function markdownImages(body: string) { return [...body.matchAll(MARKDOWN_IMAGE_PATTERN)].map((match) => match[1]); }
 
-export function getArticleBySlug(slug: string, sections?: readonly ArticleSection[]) {
-  void sections;
-  return getContent().articles.find((article) => article.slug === slug);
-}
+export function getArticleBySlug(slug: string) { return getContent().articles.find((article) => article.slug === slug); }
 export function getWorkBySlug(slug: string) { return getContent().works.find((work) => work.slug === slug); }
 export function getArticlesForCategory(category: string) { return getContent().articles.filter((article) => article.category === category); }
 export function getArticlesForTag(tag: string) { return getContent().articles.filter((article) => article.tags.includes(tag)); }
 export function getWorksForTag(tag: string) { return getContent().works.filter((work) => work.tags.includes(tag)); }
-export function getArticlesForSection(section: ArticleSection = "information") {
-  void section;
-  return getContent().articles;
-}
 
 export function hasPageContent(page: ContentPage | undefined) {
   return Boolean(page && !page.draft && (page.body.trim() || page.sections.length > 0 || page.timeline.length > 0));
@@ -234,8 +211,6 @@ export function getPage(slug: PageSlug): ContentPage | undefined {
   return { slug, title: requiredString(data, "title", file), date: optionalDate(data, "date", file), updated: optionalDate(data, "updated", file), description: optionalString(data, "description", file), draft: optionalBoolean(data, "draft", file), sections, timeline, body: document.content.trim() };
 }
 
-export function getAboutPage() { return getPage("information"); }
-export function pageSlugs() { return PAGE_SLUGS; }
 
 function readCollection<T>(directory: string, parse: (slug: string, file: string) => T): T[] {
   try {
@@ -253,10 +228,11 @@ function readCollection<T>(directory: string, parse: (slug: string, file: string
 function parseArticle(slug: string, file: string): Article {
   const document = parseDocument(file);
   const data = expectObject(document.data, file);
+  // "section" is a legacy key: still accepted so old files validate, but ignored (every article lives in Information).
   assertAllowedKeys(data, ["title", "date", "updated", "description", "category", "section", "template", "tags", "draft", "cover"], file);
   assertMarkdownImages(document.content, file);
   return {
-    slug, section: "information", template: requiredArticleTemplate(data, file), title: requiredString(data, "title", file), date: requiredDate(data, "date", file), updated: optionalDate(data, "updated", file),
+    slug, template: requiredArticleTemplate(data, file), title: requiredString(data, "title", file), date: requiredDate(data, "date", file), updated: optionalDate(data, "updated", file),
     description: requiredString(data, "description", file), category: requiredString(data, "category", file), tags: requiredTags(data, file),
     draft: optionalBoolean(data, "draft", file), cover: optionalMediaPath(data, "cover", file), body: document.content.trim(),
   };

@@ -3,7 +3,7 @@ import { renderRss, renderSitemap, sitemapPaths } from "./feeds";
 import type { Article, ContentCollection } from "./content";
 
 const article: Article = {
-  slug: "one-entry", section: "information", template: "essay", title: "One & Entry", date: "2026-07-20", description: "<summary>", category: "News", tags: [], draft: false, body: "",
+  slug: "one-entry", template: "essay", title: "One & Entry", date: "2026-07-20", description: "<summary>", category: "News", tags: [], draft: false, body: "",
 };
 
 describe("feeds", () => {

@@ -13,7 +13,6 @@ button { border: 0; background: none; color: inherit; font: inherit; cursor: poi
 .site-shell { min-height: 100vh; }
 .site-header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 18px; border-bottom: 1px solid #bbb; background: var(--bg); }
 .site-identity { font-size: 15px; line-height: 1; }
-.site-language { display: none; }
 .site-nav-standard { display: none; }
 .primary-nav ul, .mobile-nav, .mobile-sub, .section-nav ul { margin: 0; padding: 0; list-style: none; }
 .nav-link, .menu-trigger, .menu-close { position: relative; display: inline-flex; min-height: 22px; padding: 4px 0; font-size: 14px; line-height: 1.6; }
@@ -227,7 +226,6 @@ button { border: 0; background: none; color: inherit; font: inherit; cursor: poi
   .main-nav .nav-link, .sub-nav .nav-link { font-size: 14px; }
   .sub-nav .nav-link { color: var(--muted); }
   .site-nav-primary { flex: none; }
-  .site-language { display: block; margin: 34px 0 0; color: var(--muted); font-size: 13px; }
   .mobile-menu { display: none; }
   .primary-nav ul, .section-nav ul { display: flex; flex-direction: column; gap: 0; }
   .section-nav { min-width: 120px; }

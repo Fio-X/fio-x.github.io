@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { EntryDates } from "@/components/entry-dates";
 import type { NewsEntry } from "@/lib/news";
-import { sitePath } from "@/lib/site-constants";
 
 export function NewsList({ entries }: { entries: readonly NewsEntry[] }) {
   return <ol className="contents news-contents news-list">
@@ -16,5 +15,3 @@ export function NewsList({ entries }: { entries: readonly NewsEntry[] }) {
     </li>)}
   </ol>;
 }
-
-export function newsPath(page = 1) { return sitePath(page === 1 ? "/news" : `/news/page/${page}`); }
