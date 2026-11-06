@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import matter from "gray-matter";
 import { sitePath } from "@/lib/site-constants";
 
@@ -172,6 +172,12 @@ export function getContent(): ContentCollection {
 export function validateContent() {
   getContent();
   for (const slug of PAGE_SLUGS) getPage(slug);
+}
+
+/** Validates a single authored file with the same rules as the build; throws ContentValidationError. */
+export function validateContentFile(kind: "article" | "work" | "publication", file: string) {
+  const parse = { article: parseArticle, work: parseWork, publication: parsePublication }[kind];
+  parse(basename(file, ".md"), file);
 }
 
 export function getReferencedMedia() {
