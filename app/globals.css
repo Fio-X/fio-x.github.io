@@ -248,6 +248,9 @@ button { border: 0; background: none; color: inherit; font: inherit; cursor: poi
 }
 
 @media (max-width: 1023px) {
+  /* The desktop side navigation is replaced by the Menu overlay, which carries both nav levels. */
+  .pc-nav { display: none; }
+  .header-inner { display: flex; flex: 1; align-items: center; justify-content: space-between; }
   .home-identity {
     left: 35px;
     width: min(272px, calc(100vw - 70px));
