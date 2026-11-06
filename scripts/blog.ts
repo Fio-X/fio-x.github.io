@@ -2,6 +2,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, wri
 import { extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { ARTICLE_TEMPLATES, getReferencedMedia, validateContent } from "../lib/content";
+import { localIsoDate } from "../lib/dates";
 
 const ROOT = process.cwd();
 const CONTENT = resolve(ROOT, "content");
@@ -81,7 +82,7 @@ function create(kind: ContentKind, slug: string, options: Map<string, string | b
   if (existsSync(target)) fail(`${target} already exists`);
 
   const template = readFileSync(join(TEMPLATES, `${kind}.md`), "utf8");
-  const date = option(options, "date") ?? new Date().toISOString().slice(0, 10);
+  const date = option(options, "date") ?? localIsoDate();
   const legacySection = option(options, "section");
   if (kind === "article" && legacySection) fail("new article no longer accepts --section; articles belong to Information");
   const articleTemplate = option(options, "template") ?? "essay";
@@ -104,7 +105,7 @@ function createPage(slug: string, force: boolean) {
   const target = resolve(CONTENT, `pages/${slug}.md`);
   if (existsSync(target) && !force) fail(`${target} already exists; use --force to replace it`);
   mkdirSync(join(CONTENT, "pages"), { recursive: true });
-  const date = option(options, "date") ?? new Date().toISOString().slice(0, 10);
+  const date = option(options, "date") ?? localIsoDate();
   writeFileSync(target, replaceTemplate(readFileSync(join(TEMPLATES, "page.md"), "utf8"), { title: slug, date, updated: date }));
   console.log(`Created ${target}`);
 }
