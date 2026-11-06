@@ -6,8 +6,12 @@ export interface NewsEntry {
   source: "article" | "work" | "publication" | "page";
   category: NewsCategory;
   title: string;
+  /** Sort key: the most recent of published / updated. */
   date: string;
+  /** Free-form display label; when set it replaces the published / updated dates. */
   dateLabel?: string;
+  published?: string;
+  updated?: string;
   place?: string;
   placeUrl?: string;
   description?: string;
@@ -39,7 +43,8 @@ function articleEntry(article: Article): NewsEntry {
     category: "News",
     title: article.title,
     date: article.updated ?? article.date,
-    dateLabel: article.date,
+    published: article.date,
+    updated: article.updated,
     description: article.description,
     href: articleHref(article),
     cover: article.cover,
@@ -54,7 +59,8 @@ function workEntry(work: Work): NewsEntry {
     category: "News",
     title: work.title,
     date: work.updated ?? work.date,
-    dateLabel: work.date,
+    published: work.date,
+    updated: work.updated,
     description: work.summary,
     href: workHref(work.slug),
     cover: work.cover,
@@ -69,7 +75,8 @@ function publicationEntry(publication: Publication): NewsEntry {
     category: "Publication",
     title: publication.title,
     date: publication.updated ?? publication.date,
-    dateLabel: publication.date,
+    published: publication.date,
+    updated: publication.updated,
     description: publication.description,
     href: sitePath(`/publications/${publication.slug}`),
     cover: publication.cover,
@@ -84,6 +91,8 @@ function pageEntry(page: ContentPage): NewsEntry {
     category: "News",
     title: page.title,
     date: page.updated as string,
+    published: page.date,
+    updated: page.updated,
     description: page.description,
     href: sitePath(`/${page.slug}`),
   };
