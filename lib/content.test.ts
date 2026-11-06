@@ -179,6 +179,20 @@ describe("Markdown content", () => {
     expect(referenced.has("/media/orphan.png")).toBe(false);
   });
 
+  test("accepts unquoted YAML dates as written by the CMS", async () => {
+    const { getContent } = await withContent({
+      "content/articles/unquoted.md": article().replace('date: "2026-07-20"', "date: 2026-07-20"),
+    });
+    expect(getContent().articles[0].date).toBe("2026-07-20");
+  });
+
+  test("rejects impossible unquoted YAML dates instead of rolling them over", async () => {
+    const { getContent } = await withContent({
+      "content/articles/rolled.md": article().replace('date: "2026-07-20"', "date: 2026-02-31"),
+    });
+    expect(() => getContent()).toThrow("date must be an ISO date");
+  });
+
   test("rejects impossible calendar dates", async () => {
     const { getContent } = await withContent({
       "content/articles/bad-date.md": article().replace('date: "2026-07-20"', 'date: "2026-02-31"'),

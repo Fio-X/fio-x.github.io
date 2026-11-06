@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import matter from "gray-matter";
+import yaml from "js-yaml";
 import { sitePath } from "@/lib/site-constants";
 
 const contentDirectory = () => join(process.cwd(), "content");
@@ -288,8 +289,15 @@ function parsePublication(slug: string, file: string): Publication {
   };
 }
 
+/**
+ * YAML 1.2 core schema: no implicit timestamps, so an unquoted `date: 2026-11-06` (as written by
+ * the CMS) stays a string and goes through the same calendar validation as a quoted one. The default
+ * schema would turn it into a Date and silently roll `2026-02-31` over to March 3.
+ */
+const FRONTMATTER_OPTIONS = { engines: { yaml: (source: string) => yaml.load(source, { schema: yaml.CORE_SCHEMA }) as object } };
+
 function parseDocument(file: string) {
-  try { return matter(readFileSync(file, "utf8")); }
+  try { return matter(readFileSync(file, "utf8"), FRONTMATTER_OPTIONS); }
   catch (error) { throw new ContentValidationError(`${file}: could not parse frontmatter (${error instanceof Error ? error.message : String(error)})`); }
 }
 
