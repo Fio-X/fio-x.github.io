@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Information", alternates: { canonica
 
 export default function InformationPage() {
   const { articles } = getContent();
-  return <SiteShell currentPath={sitePath("/information")} sectionItems={informationSectionItems(sitePath("/information"), undefined, getPage("information"))}>
-    <InformationIndex articles={articles} />
+  const page = getPage("information");
+  return <SiteShell currentPath={sitePath("/information")} sectionItems={informationSectionItems(sitePath("/information"), undefined, page)}>
+    <InformationIndex articles={articles} page={page} />
   </SiteShell>;
 }
