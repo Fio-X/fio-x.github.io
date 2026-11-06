@@ -23,3 +23,12 @@ describe("NewsList dates", () => {
     expect(html).not.toContain("发布");
   });
 });
+
+describe("Article page dates", () => {
+  test("shows the same published and updated dates as the News list", async () => {
+    const { InformationArticle } = await import("./information-article");
+    const article = { slug: "x", section: "information", template: "essay", title: "X", date: "2026-07-01", updated: "2026-08-03", description: "d", category: "journal", tags: [], draft: false, body: "" } as const;
+    const html = renderToStaticMarkup(<InformationArticle article={{ ...article, tags: [] }} />);
+    expect(html).toContain('<p class="article-date"><time dateTime="2026-07-01">发布 2026-07-01</time> · <time dateTime="2026-08-03">更新 2026-08-03</time></p>');
+  });
+});
