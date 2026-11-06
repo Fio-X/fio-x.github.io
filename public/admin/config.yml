@@ -1,0 +1,151 @@
+# yaml-language-server: $schema=https://unpkg.com/@sveltia/cms@0.250.2/schema/sveltia-cms.json
+#
+# Field rules mirror lib/content.ts. The build-time validator (`bun run blog -- validate`, run by CI
+# before every deploy) stays the source of truth: if an entry saved here breaks a rule, the deploy
+# stops and the live site keeps the previous version.
+
+backend:
+  name: github
+  repo: Fio-X/fio-x.github.io
+  branch: main
+
+site_url: https://fio-x.github.io
+media_folder: /public/media
+public_folder: /media
+
+# Filenames must be lowercase kebab-case (a-z, 0-9, hyphen).
+slug:
+  encoding: ascii
+  clean_accents: true
+
+output:
+  # The validator rejects empty strings, so optional fields left blank are not written at all.
+  omit_empty_optional_fields: true
+  yaml:
+    # Match the existing files: "double-quoted" strings, including dates.
+    quote: double
+
+collections:
+  - name: articles
+    label: 文章
+    label_singular: 文章
+    folder: /content/articles
+    extension: md
+    format: yaml-frontmatter
+    create: true
+    # The author types the filename (English, kebab-case) when creating; it becomes the URL.
+    slug:
+      editable: [create]
+    summary: "{{title}} · {{date}}"
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: 标题, widget: string }
+      - { name: date, label: 发布日期, widget: datetime, type: date }
+      - { name: updated, label: 更新日期, widget: datetime, type: date, required: false, hint: 修改已发布文章时填写 }
+      - { name: description, label: 摘要, widget: text, hint: 用于目录、搜索结果和 RSS }
+      - { name: category, label: 分类, widget: string, default: journal }
+      - { name: template, label: 模板, widget: select, options: [essay, image-notes, conversation], default: essay }
+      - { name: tags, label: 标签, widget: list, min: 1, hint: 至少一个，不能重复 }
+      - { name: draft, label: 草稿（不在网站上显示）, widget: boolean, default: true }
+      - { name: cover, label: 封面, widget: image, required: false }
+      - { name: body, label: 正文, widget: markdown }
+
+  - name: works
+    label: 作品
+    label_singular: 作品
+    folder: /content/works
+    extension: md
+    format: yaml-frontmatter
+    create: true
+    slug:
+      editable: [create]
+    summary: "{{title}} · {{date}}"
+    sortable_fields: [date, title]
+    fields:
+      - { name: kind, label: 类型, widget: select, options: [photography, software, hardware, mixed], default: photography }
+      - { name: title, label: 标题, widget: string }
+      - { name: date, label: 日期, widget: datetime, type: date }
+      - { name: updated, label: 更新日期, widget: datetime, type: date, required: false }
+      - { name: summary, label: 一句话说明, widget: text }
+      - { name: role, label: 角色, widget: string, required: false }
+      - { name: status, label: 状态, widget: string, required: false }
+      - name: projectUrl
+        label: 项目链接
+        widget: string
+        required: false
+        pattern: ['^https?://', '必须以 http:// 或 https:// 开头']
+      - { name: tags, label: 标签, widget: list, min: 1 }
+      - { name: draft, label: 草稿（不在网站上显示）, widget: boolean, default: true }
+      - { name: cover, label: 封面, widget: image, required: false }
+      - name: media
+        label: 图片流
+        label_singular: 图片
+        widget: list
+        required: false
+        summary: "{{fields.alt}}"
+        fields:
+          - { name: src, label: 图片, widget: image }
+          - { name: alt, label: 图片描述（alt）, widget: string, hint: 描述图片内容，供读屏和图片无法显示时使用 }
+          - { name: decorative, label: 装饰性图片, widget: boolean, default: false, required: false }
+      - { name: body, label: 补充说明, widget: markdown, required: false }
+
+  - name: publications
+    label: 出版物
+    label_singular: 出版物
+    folder: /content/publications
+    extension: md
+    format: yaml-frontmatter
+    create: true
+    slug:
+      editable: [create]
+    summary: "{{title}} · {{date}}"
+    sortable_fields: [date, title]
+    fields:
+      - { name: title, label: 标题, widget: string }
+      - { name: date, label: 日期, widget: datetime, type: date }
+      - { name: updated, label: 更新日期, widget: datetime, type: date, required: false }
+      - { name: description, label: 说明, widget: text, required: false }
+      - { name: publisher, label: 出版方, widget: string, required: false }
+      - { name: authors, label: 作者, widget: list, required: false }
+      - { name: draft, label: 草稿（不在网站上显示）, widget: boolean, default: true }
+      - { name: cover, label: 封面, widget: image, required: false }
+      - { name: coverAlt, label: 封面描述（alt）, widget: string, required: false }
+      - { name: body, label: 补充说明, widget: markdown, required: false }
+
+  - name: pages
+    label: 固定页面
+    files:
+      - name: information
+        label: Information
+        file: /content/pages/information.md
+        format: yaml-frontmatter
+        fields: &page_fields
+          - { name: title, label: 标题, widget: string }
+          - { name: date, label: 发布日期, widget: datetime, type: date, required: false }
+          - { name: updated, label: 更新日期, widget: datetime, type: date, required: false, hint: 填写后会出现在 News 中 }
+          - { name: description, label: 摘要, widget: text, required: false }
+          - { name: draft, label: 草稿（不在网站上显示）, widget: boolean, default: true }
+          - name: sections
+            label: 二级导航锚点
+            label_singular: 锚点
+            widget: list
+            required: false
+            hint: 每个锚点的名称必须和正文里的一个二级标题（## 名称）完全相同
+            fields:
+              - name: id
+                label: 锚点 id
+                widget: string
+                pattern: ['^[a-z0-9]+(?:-[a-z0-9]+)*$', '只能用小写字母、数字和连字符']
+              - { name: label, label: 名称, widget: string }
+          - name: timeline
+            label: 履历时间线
+            label_singular: 条目
+            widget: list
+            required: false
+            fields:
+              - { name: section, label: 所属锚点（id 或名称）, widget: string }
+              - { name: year, label: 年份, widget: string }
+              - { name: text, label: 内容, widget: string }
+          - { name: body, label: 正文, widget: markdown, required: false }
+      - { name: biography, label: Biography, file: /content/pages/biography.md, format: yaml-frontmatter, fields: *page_fields }
+      - { name: contact, label: Contact, file: /content/pages/contact.md, format: yaml-frontmatter, fields: *page_fields }
