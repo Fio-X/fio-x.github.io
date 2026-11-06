@@ -1,4 +1,4 @@
-import { articleHref, getContent, getPage, hasPageContent, type Article, type ContentPage, type NewsCategory, type Publication, type Work, NEWS_CATEGORIES, workHref } from "./content";
+import { articleHref, getContent, getPage, hasPageContent, type Article, type ContentPage, type NewsCategory, type Publication, type Work, workHref } from "./content";
 import { sitePath } from "./site-constants";
 
 export interface NewsEntry {
@@ -34,7 +34,6 @@ export function projectNewsEntries(content: ReturnType<typeof getContent>, pages
   return entries.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
 }
 
-export function newsCategories() { return [...NEWS_CATEGORIES]; }
 
 function articleEntry(article: Article): NewsEntry {
   return {

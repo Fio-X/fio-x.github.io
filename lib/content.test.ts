@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Article, MediaGroup, MediaItem, Work } from "./content";
 import { renderRss, sitemapPaths } from "./feeds";
-import { homeNavItemsFromContent } from "./site";
 
 const originalCwd = process.cwd();
 const temporaryDirectories: string[] = [];
@@ -78,13 +77,8 @@ describe("Markdown content", () => {
     expect(staticSlugParams(content.articles.map((item: Article) => item.slug))).toEqual([{ slug: "public-news" }]);
     expect(staticSlugParams(content.works.map((item: Work) => item.slug))).toEqual([{ slug: "public-work" }]);
     expect(getArticleBySlug("draft")).toBeUndefined();
-    expect(getArticleBySlug("public-news", ["information"])?.slug).toBe("public-news");
+    expect(getArticleBySlug("public-news")?.slug).toBe("public-news");
     expect(getWorkBySlug("draft-work")).toBeUndefined();
-    expect(homeNavItemsFromContent({
-      hasNews: true,
-      hasWorks: content.works.length > 0,
-      hasInformation: true,
-    })).toEqual([{ href: "/news/", label: "Latest" }, { href: "/works/", label: "Works" }, { href: "/information/", label: "Information" }]);
     expect(content.categories).toEqual(["journal"]);
     expect(content.tags).toEqual(["web", "writing"]);
     const rss = renderRss({ articles: content.articles, siteName: "Fio", siteDescription: "Test", siteOrigin: "https://example.com" });
@@ -97,17 +91,8 @@ describe("Markdown content", () => {
     expect(paths.join(" ")).not.toContain("__static-export-placeholder__");
   });
 
-  test("draft-only content still keeps the fixed home entries", async () => {
-    await withContent({
-      "content/articles/draft-news.md": article().replace("draft: false", "draft: true"),
-      "content/articles/draft-information.md": article().replace('section: "news"', 'section: "information"').replace("draft: false", "draft: true"),
-      "content/works/draft-work.md": work().replace("draft: false", "draft: true"),
-    });
-    expect(homeNavItemsFromContent({ hasNews: false, hasWorks: false, hasInformation: false })).toHaveLength(3);
-  });
-
   test("maps all articles to Information and keeps the template contract", async () => {
-    const { getContent, articleHref, getArticlesForSection, workHref } = await withContent({
+    const { getContent, articleHref, workHref } = await withContent({
       "content/articles/news-note.md": article(),
       "content/articles/article-note.md": article().replace('section: "news"', 'section: "articles"').replace("First entry", "Article note"),
       "content/articles/information-note.md": article().replace('section: "news"', 'section: "information"\ntemplate: "conversation"').replace("First entry", "Information note"),
@@ -119,7 +104,7 @@ describe("Markdown content", () => {
       "/information/information-note/",
       "/information/news-note/",
     ]);
-    expect(getArticlesForSection("information").find((item: Article) => item.slug === "information-note")?.template).toBe("conversation");
+    expect(content.articles.find((item: Article) => item.slug === "information-note")?.template).toBe("conversation");
     expect(workHref(content.works[0].slug)).toBe("/works/first-work/");
   });
 

@@ -1,5 +1,4 @@
-import { categoryHref, getContent, hasPageContent, NEWS_CATEGORIES, type ArticleTemplate, type ContentPage } from "@/lib/content";
-import { getNewsEntries } from "@/lib/news";
+import { getContent, hasPageContent, NEWS_CATEGORIES, type ArticleTemplate, type ContentPage } from "@/lib/content";
 import type { SectionNavItem } from "./site";
 import { sitePath } from "./site-constants";
 
@@ -37,20 +36,4 @@ export function pageSectionItems(page: ContentPage | undefined): SectionNavItem[
   return page?.sections.map((section) => ({ href: `#${section.id}`, label: section.label })) ?? [];
 }
 
-export function categorySectionItems(currentPath?: string): SectionNavItem[] {
-  return getNewsEntries().map((entry) => ({ href: categoryHref(entry.category), label: entry.category, current: currentPath === categoryHref(entry.category) }));
-}
-
 export function categorySlug(category: string) { return category.toLowerCase().replace(/\s+/g, "-"); }
-
-/** Compatibility exports for legacy routes during the Information-only migration. */
-export function articleSectionItems(_section: "articles" | "information", currentPath = "/information/") {
-  return informationSectionItems(currentPath);
-}
-export function contentSectionItems(_section: "articles" | "information" | "news", currentPath: string) {
-  return informationSectionItems(currentPath);
-}
-export function aggregationContext(sections: readonly string[], hasWorks = false) { void sections; void hasWorks; return sitePath("/information"); }
-export function availableContentSections() {
-  return { news: true, biography: true, works: true, publications: true, articles: false, contact: true, information: true };
-}

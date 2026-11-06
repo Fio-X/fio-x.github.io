@@ -5,7 +5,7 @@ import { projectNewsEntries } from "./news";
 describe("News aggregation", () => {
   test("projects published articles, works, and publications into one dated stream", () => {
     const content = {
-      articles: [{ slug: "essay", section: "information", template: "essay", title: "Essay", date: "2026-07-20", description: "Essay summary", category: "journal", tags: [], draft: false, body: "" }],
+      articles: [{ slug: "essay", template: "essay", title: "Essay", date: "2026-07-20", description: "Essay summary", category: "journal", tags: [], draft: false, body: "" }],
       works: [{ slug: "work", kind: "photography", title: "Work", date: "2026-07-21", summary: "Work summary", tags: [], draft: false, media: [], mediaGroups: [], body: "" }],
       publications: [{ slug: "publication", title: "Publication", date: "2026-07-22", description: "Publication summary", draft: false, body: "" }],
       categories: [], tags: [],
@@ -20,8 +20,8 @@ describe("News dates", () => {
   test("keeps published and updated dates while sorting by the latest change", () => {
     const content = {
       articles: [
-        { slug: "revised", section: "information", template: "essay", title: "Revised", date: "2026-07-01", updated: "2026-08-03", description: "d", category: "journal", tags: [], draft: false, body: "" },
-        { slug: "fresh", section: "information", template: "essay", title: "Fresh", date: "2026-07-20", description: "d", category: "journal", tags: [], draft: false, body: "" },
+        { slug: "revised", template: "essay", title: "Revised", date: "2026-07-01", updated: "2026-08-03", description: "d", category: "journal", tags: [], draft: false, body: "" },
+        { slug: "fresh", template: "essay", title: "Fresh", date: "2026-07-20", description: "d", category: "journal", tags: [], draft: false, body: "" },
       ],
       works: [], publications: [], categories: [], tags: [],
     } satisfies ContentCollection;

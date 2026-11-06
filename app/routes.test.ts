@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { STATIC_EXPORT_PLACEHOLDER_SLUG, staticSlugParams } from "@/lib/content";
 import { paginationParams, NEWS_PAGE_SIZE, PUBLICATIONS_PAGE_SIZE } from "@/lib/pagination";
-import { homeNavItemsFromContent } from "@/lib/site";
+import { homeNavItems } from "@/lib/site";
 
 describe("static route contracts", () => {
   test("home keeps the frozen public destinations even with empty content", () => {
-    expect(homeNavItemsFromContent({ hasNews: false, hasWorks: false, hasInformation: false })).toEqual([
+    expect(homeNavItems()).toEqual([
       { href: "/news/", label: "Latest" },
       { href: "/works/", label: "Works" },
       { href: "/information/", label: "Information" },

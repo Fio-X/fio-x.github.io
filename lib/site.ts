@@ -1,4 +1,3 @@
-import { getPage, hasPageContent } from "./content";
 import { sitePath } from "./site-constants";
 export { SITE_DESCRIPTION, SITE_NAME, SITE_ORIGIN } from "./site-constants";
 
@@ -13,16 +12,14 @@ export interface SectionNavItem {
   disabled?: boolean;
 }
 
-export function homeNavItemsFromContent(state?: { hasNews?: boolean; hasWorks?: boolean; hasInformation?: boolean }): NavigationItem[] {
-  void state;
+/** Home page entries are fixed public destinations, independent of how much content exists. */
+export function homeNavItems(): NavigationItem[] {
   return [
     { href: sitePath("/news"), label: "Latest" },
     { href: sitePath("/works"), label: "Works" },
     { href: sitePath("/information"), label: "Information" },
   ];
 }
-
-export function homeNavItems(): NavigationItem[] { return homeNavItemsFromContent(); }
 
 export function contentNavItems(): NavigationItem[] {
   return [
@@ -33,8 +30,4 @@ export function contentNavItems(): NavigationItem[] {
     { href: sitePath("/contact"), label: "Contact" },
     { href: sitePath("/information"), label: "Information" },
   ];
-}
-
-export function pageHasPublicContent(slug: "information" | "biography" | "contact") {
-  return hasPageContent(getPage(slug));
 }
