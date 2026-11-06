@@ -137,6 +137,7 @@ button { border: 0; background: none; color: inherit; font: inherit; cursor: poi
 .information-index, .information-article.narrow { width: 580px; max-width: 100%; }
 .information-index .title, .information-article .title { margin: 0; font-size: 18px; font-weight: 400; line-height: 1.35; }
 .index-intro, .article-lead { margin-top: 2em; font-size: 16px; line-height: 1.8; }
+.information-page { margin-top: 2em; }
 .information-template-links { display: flex; gap: 14px; margin-top: 2em; color: var(--muted); font-size: 13px; }
 .information-entry { margin-top: 6em; }
 .information-entry + .information-entry { margin-top: 5em; }

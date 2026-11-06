@@ -167,6 +167,25 @@ describe("Markdown content", () => {
     expect(() => getContent()).toThrow("invalid.md");
   });
 
+  test("counts Markdown body, draft, and fixed-page images as referenced media", async () => {
+    const { getReferencedMedia } = await withContent({
+      "public/media/body.png": "image", "public/media/draft-cover.jpg": "image", "public/media/page.webp": "image", "public/media/orphan.png": "image",
+      "content/articles/body-image.md": article().replace("Body", "![Body image](/media/body.png)"),
+      "content/articles/draft.md": article('cover: "/media/draft-cover.jpg"\n').replace("draft: false", "draft: true"),
+      "content/pages/biography.md": `---\ntitle: "Biography"\n---\n\n![Portrait](/media/page.webp)\n`,
+    });
+    const referenced = getReferencedMedia();
+    expect([...referenced].sort()).toEqual(["/media/body.png", "/media/draft-cover.jpg", "/media/page.webp"]);
+    expect(referenced.has("/media/orphan.png")).toBe(false);
+  });
+
+  test("rejects impossible calendar dates", async () => {
+    const { getContent } = await withContent({
+      "content/articles/bad-date.md": article().replace('date: "2026-07-20"', 'date: "2026-02-31"'),
+    });
+    expect(() => getContent()).toThrow("date must be an ISO date");
+  });
+
   test("rejects duplicate tags and invalid authoring filenames", async () => {
     const { getContent } = await withContent({
       "content/articles/Bad Slug.md": article().replace("- \"writing\"", "- \"writing\"\n  - \"writing\""),

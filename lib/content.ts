@@ -149,13 +149,19 @@ export function staticSlugParams(slugs: readonly string[]) {
   return (slugs.length > 0 ? slugs : [STATIC_EXPORT_PLACEHOLDER_SLUG]).map((slug) => ({ slug }));
 }
 
-export function getContent(): ContentCollection {
+/** Every authored record, drafts included; only for validation and media bookkeeping. */
+function readAllContent() {
   const articles = readCollection(articleDirectory(), parseArticle);
   const works = readCollection(workDirectory(), parseWork);
   const publications = readCollection(publicationDirectory(), parsePublication);
   assertUniqueSlugs(articles, "article");
   assertUniqueSlugs(works, "work");
   assertUniqueSlugs(publications, "publication");
+  return { articles, works, publications };
+}
+
+export function getContent(): ContentCollection {
+  const { articles, works, publications } = readAllContent();
 
   const publishedArticles = articles.filter((article) => !article.draft).sort(byNewest);
   const publishedWorks = works.filter((work) => !work.draft).sort(byNewest);
@@ -174,18 +180,24 @@ export function validateContent() {
   for (const slug of PAGE_SLUGS) getPage(slug);
 }
 
+/** Media referenced anywhere in authored content, including drafts, Markdown bodies, and fixed pages. */
 export function getReferencedMedia() {
-  const { articles, works, publications } = getContent();
+  const { articles, works, publications } = readAllContent();
+  const pages = PAGE_SLUGS.map((slug) => getPage(slug)).filter((page): page is ContentPage => page !== undefined);
   return new Set([
-    ...articles.flatMap((article) => article.cover ? [article.cover] : []),
+    ...articles.flatMap((article) => [...(article.cover ? [article.cover] : []), ...markdownImages(article.body)]),
     ...works.flatMap((work) => [
       ...(work.cover ? [work.cover] : []),
       ...work.media.map((media) => media.src),
       ...work.mediaGroups.flatMap((group) => group.items.map((media) => media.src)),
+      ...markdownImages(work.body),
     ]),
-    ...publications.flatMap((publication) => publication.cover ? [publication.cover] : []),
+    ...publications.flatMap((publication) => [...(publication.cover ? [publication.cover] : []), ...markdownImages(publication.body)]),
+    ...pages.flatMap((page) => markdownImages(page.body)),
   ]);
 }
+
+function markdownImages(body: string) { return [...body.matchAll(MARKDOWN_IMAGE_PATTERN)].map((match) => match[1]); }
 
 export function getArticleBySlug(slug: string, sections?: readonly ArticleSection[]) {
   void sections;
@@ -314,7 +326,8 @@ function requiredDate(data: Record<string, unknown>, key: string, file: string) 
 function optionalDate(data: Record<string, unknown>, key: string, file: string) {
   const value = data[key];
   if (value === undefined) return undefined;
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) throw new ContentValidationError(`${file}: ${key} must be an ISO date (YYYY-MM-DD)`);
+  // Round-trip check: Date.parse silently rolls impossible dates such as 2026-02-31 into the next month.
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !isCalendarDate(value)) throw new ContentValidationError(`${file}: ${key} must be an ISO date (YYYY-MM-DD)`);
   return value;
 }
 
@@ -453,6 +466,10 @@ function assertUniqueSlugs(records: Array<{ slug: string }>, kind: string) {
   for (const record of records) { if (seen.has(record.slug)) throw new ContentValidationError(`${kind}: duplicate slug ${record.slug}`); seen.add(record.slug); }
 }
 
+function isCalendarDate(value: string) {
+  const time = Date.parse(`${value}T00:00:00Z`);
+  return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value;
+}
 function escapeRegExp(value: string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function uniqueSorted(values: string[]) { return [...new Set(values)].sort((a, b) => a.localeCompare(b)); }
 function byNewest<T extends { date: string; updated?: string; slug: string }>(a: T, b: T) { return (b.updated ?? b.date).localeCompare(a.updated ?? a.date) || a.slug.localeCompare(b.slug); }
