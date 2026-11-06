@@ -121,6 +121,12 @@ button { border: 0; background: none; color: inherit; font: inherit; cursor: poi
 .content-body blockquote { margin-inline: 0; padding-left: 1rem; border-left: 1px solid var(--rule); color: var(--muted); }
 .content-body :where(code, pre) { font-family: var(--mono); }
 .content-body pre { max-width: 100%; overflow-x: auto; padding: 16px; background: #f7f8f5; }
+/* GFM: tables scroll horizontally instead of widening the page (as in github-markdown-css); task lists drop bullets. */
+.content-body table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.content-body :where(th, td) { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; overflow-wrap: normal; }
+.content-body .contains-task-list { padding-left: 0; }
+.content-body .task-list-item { list-style: none; }
+.content-body .footnotes { margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; }
 .content-body img { display: block; max-width: 100%; height: auto; }
 .content-body-essay { max-width: 580px; }
 .content-body-essay blockquote { margin-block: 3em; padding-left: 60px; font-size: 16px; line-height: 1.8; }

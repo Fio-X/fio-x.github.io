@@ -1,11 +1,21 @@
 import { Children, isValidElement, type ReactNode } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Options } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { ArticleTemplate } from "@/lib/content";
 
+// singleTilde: false keeps Chinese ranges such as "3~5天" from turning into strikethrough; only ~~text~~ strikes through.
+const REMARK_PLUGINS: Options["remarkPlugins"] = [[remarkGfm, { singleTilde: false }]];
+// remark-rehype requires translated footnote labels on non-English pages (they are read by assistive technology).
+const REMARK_REHYPE_OPTIONS: Options["remarkRehypeOptions"] = {
+  footnoteLabel: "脚注",
+  footnoteBackLabel: (referenceIndex, rereferenceIndex) => `返回引用 ${referenceIndex + 1}${rereferenceIndex > 1 ? `-${rereferenceIndex}` : ""}`,
+};
+
 export function ContentBody({ children, sectionIds = {}, variant = "default" }: { children: string; sectionIds?: Record<string, string>; variant?: ArticleTemplate | "default" }) {
-  return <div className={`content-body${variant === "default" ? "" : ` content-body-${variant}`}`}><ReactMarkdown skipHtml components={{
+  return <div className={`content-body${variant === "default" ? "" : ` content-body-${variant}`}`}><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} remarkRehypeOptions={REMARK_REHYPE_OPTIONS} components={{
     h1: "h2",
-    h2: ({ children: headingChildren }) => <h2 id={sectionIds[textContent(headingChildren)]}>{headingChildren}</h2>,
+    // Keep generated attributes (e.g. the footnote label's sr-only class and id); section anchors take precedence.
+    h2: ({ node, children: headingChildren, ...props }) => { void node; return <h2 {...props} id={sectionIds[textContent(headingChildren)] ?? props.id}>{headingChildren}</h2>; },
     p: ({ children: paragraphChildren }) => variant === "conversation" ? conversationParagraph(paragraphChildren) : <p>{paragraphChildren}</p>,
     img: ({ src, alt = "", ...props }) => variant === "image-notes"
       ? <figure className="template-media image-note-item"><img {...props} src={src} alt={alt} /><figcaption className="template-caption">{alt}</figcaption></figure>
