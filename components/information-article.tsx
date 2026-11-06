@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ContentBody } from "@/components/content-body";
+import { EntryDates } from "@/components/entry-dates";
 import { categoryHref, tagHref, type Article } from "@/lib/content";
 import { sitePath } from "@/lib/site-constants";
 
 export function InformationArticle({ article }: { article: Article }) {
   const detailClass = article.template === "image-notes" ? "image-notes" : article.template === "conversation" ? "narrow conversation" : "narrow essay";
   return <article className={`information-article ${detailClass}`}>
-    <header className="article-head"><p className="article-kicker">{article.category} · Information</p><h1 className="title">{article.title}</h1><p className="article-date"><time dateTime={article.updated ?? article.date}>{article.updated ?? article.date}</time></p><p className="article-lead">{article.description}</p></header>
+    <header className="article-head"><p className="article-kicker">{article.category} · Information</p><h1 className="title">{article.title}</h1><EntryDates className="article-date" published={article.date} updated={article.updated} /><p className="article-lead">{article.description}</p></header>
     {article.cover && <figure className="template-media"><div className="template-image hero">
       {/* Static export serves public media directly. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
