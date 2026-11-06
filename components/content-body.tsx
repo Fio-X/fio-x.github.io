@@ -1,6 +1,7 @@
 import { Children, isValidElement, type ReactNode } from "react";
 import ReactMarkdown, { type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MediaImage } from "@/components/media-image";
 import type { ArticleTemplate } from "@/lib/content";
 
 // singleTilde: false keeps Chinese ranges such as "3~5天" from turning into strikethrough; only ~~text~~ strikes through.
@@ -17,9 +18,13 @@ export function ContentBody({ children, sectionIds = {}, variant = "default" }: 
     // Keep generated attributes (e.g. the footnote label's sr-only class and id); section anchors take precedence.
     h2: ({ node, children: headingChildren, ...props }) => { void node; return <h2 {...props} id={sectionIds[textContent(headingChildren)] ?? props.id}>{headingChildren}</h2>; },
     p: ({ children: paragraphChildren }) => variant === "conversation" ? conversationParagraph(paragraphChildren) : <p>{paragraphChildren}</p>,
-    img: ({ src, alt = "", ...props }) => variant === "image-notes"
-      ? <figure className="template-media image-note-item"><img {...props} src={src} alt={alt} /><figcaption className="template-caption">{alt}</figcaption></figure>
-      : <img {...props} src={src} alt={alt} />,
+    // react-markdown passes its syntax-tree `node`; keep it off the DOM element.
+    img: ({ node, src, alt = "", ...props }) => {
+      void node;
+      if (typeof src !== "string") return null;
+      const image = <MediaImage {...props} src={src} alt={alt} />;
+      return variant === "image-notes" ? <figure className="template-media image-note-item">{image}<figcaption className="template-caption">{alt}</figcaption></figure> : image;
+    },
   }}>{children}</ReactMarkdown></div>;
 }
 
