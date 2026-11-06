@@ -56,3 +56,8 @@ bun run dev
 文件名只能使用小写 kebab-case。所有文章都归档于 Information，文章可声明 `template: essay`、`image-notes` 或 `conversation`；News 是由公开文章、作品、出版物和固定页面更新时间派生的汇总流。正式文章详情使用 `/information/<slug>/`，旧 `/articles/`、`/archive/`、`/about/` 只作为兼容入口。页面可在 frontmatter 的 `sections` 中以 `{id, label}` 声明二级导航锚点：`id` 为小写 kebab-case，正文必须有一个与 `label` 同名的 Markdown 二级标题（`## label`），渲染时该标题获得这个 `id`。所有公开图片必须位于 `public/media/`，在 frontmatter 与 Markdown 中以 `/media/...` 引用。作品详情使用 `media` 数组定义有序图片流，每张非装饰图都必须填写描述性的 `alt`。
 
 只放入原创或已获得明确授权的文字、图片和其他素材。不要将私密笔记、凭据或未获得发布许可的第三方材料放入 `content/` 或 `public/media/`，因为它们会进入公开静态构建产物。
+
+## 许可
+
+- **代码**：[MIT](LICENSE)。
+- **内容**：`content/` 中的文章与页面、`public/media/` 中的图片及其他媒体，版权归作者所有，保留所有权利，不适用 MIT 许可。转载、改编或其他使用请先取得许可；按法律允许的范围引用不受此限。
