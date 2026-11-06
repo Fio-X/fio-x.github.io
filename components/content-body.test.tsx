@@ -53,4 +53,10 @@ describe("ContentBody images", () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+
+  test("image-notes captions repeat the alt text, so they are hidden from screen readers", () => {
+    const html = renderToStaticMarkup(<ContentBody variant="image-notes">{"![A shot](/media/missing.png)\n\n![](/media/blank.png)"}</ContentBody>);
+    expect(html).toContain('<figcaption class="template-caption" aria-hidden="true">A shot</figcaption>');
+    expect(html.match(/<figcaption/g)).toHaveLength(1);
+  });
 });

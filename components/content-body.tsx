@@ -23,7 +23,8 @@ export function ContentBody({ children, sectionIds = {}, variant = "default" }: 
       void node;
       if (typeof src !== "string") return null;
       const image = <MediaImage {...props} src={src} alt={alt} />;
-      return variant === "image-notes" ? <figure className="template-media image-note-item">{image}<figcaption className="template-caption">{alt}</figcaption></figure> : image;
+      // The caption repeats the alt text, so screen readers skip it.
+      return variant === "image-notes" ? <figure className="template-media image-note-item">{image}{alt && <figcaption className="template-caption" aria-hidden="true">{alt}</figcaption>}</figure> : image;
     },
   }}>{children}</ReactMarkdown></div>;
 }
