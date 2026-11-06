@@ -19,6 +19,28 @@ bun run dev
 
 `blog build` 依次运行内容校验、测试、lint 和 Next.js 静态导出。它不执行 `git add`、`commit`、`push`，也不调用 GitHub。审阅完成后手动推送 `main`，现有 GitHub Actions 会把 `out/` 发布到 GitHub Pages。
 
+## 网页写作入口
+
+打开 `https://fio-x.github.io/admin/`（不在站点导航中），用 [Sveltia CMS](https://sveltiacms.app/) 在浏览器里写作。点「发布」会把 Markdown 提交到 `main`，由 GitHub Actions 校验、构建并部署，大约 1 分钟后上线。校验不通过时不会部署，线上保持旧版本；结果在仓库的 Actions 页面查看。
+
+第一次使用：
+
+1. 在 GitHub 打开 Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token。
+2. Repository access 选 Only select repositories → `Fio-X/fio-x.github.io`；Permissions 里把 Contents 设为 Read and write（Metadata 只读会自动加上）；设置一个过期时间。
+3. 在 `/admin/` 选「使用访问令牌登录」，粘贴令牌。「使用 GitHub 登录」需要额外部署授权服务，本站不用。
+
+写作要点：
+
+- 新建时填写的文件名（slug）就是网址 `/information/<slug>/`，只能用小写英文、数字和连字符，发布后不要再改。
+- 新文章默认是草稿；取消「草稿」后才会在网站上显示。修改已发布的文章时填写「更新日期」。
+- 图片上传到 `public/media/`，正文中以 `/media/...` 引用。
+
+安全说明：
+
+- 令牌保存在浏览器的 localStorage 中，只授权本仓库的 Contents 读写。不再使用的设备上要退出登录；令牌泄露时到 GitHub 撤销即可。
+- CMS 脚本固定为一个版本并带完整性校验（`public/admin/index.html` 中的 `integrity`），文件内容一旦被改动，浏览器会拒绝运行。升级时修改版本号，并用 `curl -sL <脚本地址> | openssl dgst -sha384 -binary | openssl base64 -A` 重新生成哈希。
+- 本地预览：`bun run dev` 后在 Chrome 打开 `http://localhost:3000/admin/`，选「使用本地仓库」直接编辑本地文件；这种方式不会推送，需要自己提交。
+
 ## 架构
 
 项目是一个文件型内容源驱动的静态站点生成系统：CLI 和 Next.js 只在作者电脑或 CI 构建期运行，GitHub Pages 线上只托管 `out/` 静态产物。
