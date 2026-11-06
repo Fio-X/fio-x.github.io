@@ -32,3 +32,25 @@ describe("ContentBody GFM", () => {
     expect(html).not.toContain("<script>");
   });
 });
+
+describe("ContentBody images", () => {
+  test("adds build-time width and height and keeps react-markdown internals off the element", async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { pngBytes } = await import("../lib/media.test");
+    const originalCwd = process.cwd();
+    const directory = mkdtempSync(join(tmpdir(), "portfolio-blog-body-image-"));
+    try {
+      mkdirSync(join(directory, "public/media"), { recursive: true });
+      writeFileSync(join(directory, "public/media/shot.png"), pngBytes(800, 600));
+      process.chdir(directory);
+      const html = render("![A shot](/media/shot.png)");
+      expect(html).toContain('<img src="/media/shot.png" alt="A shot" width="800" height="600"/>');
+      expect(html).not.toContain("node=");
+    } finally {
+      process.chdir(originalCwd);
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+});
