@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { DEFAULT_SHARE_IMAGE } from "@/lib/share";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_ORIGIN } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   metadataBase: new URL(SITE_ORIGIN),
   alternates: { types: { "application/rss+xml": "/rss.xml" } },
-  openGraph: { siteName: SITE_NAME, type: "website" },
+  openGraph: { siteName: SITE_NAME, type: "website", images: [DEFAULT_SHARE_IMAGE] },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
