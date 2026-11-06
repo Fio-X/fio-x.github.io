@@ -1,14 +1,26 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { ARTICLE_TEMPLATES, getReferencedMedia, validateContent } from "../lib/content";
+import { ARTICLE_TEMPLATES, getPage, getReferencedMedia, type PageSlug, validateContent, validateContentFile, WORK_KINDS } from "../lib/content";
 import { localIsoDate } from "../lib/dates";
 
 const ROOT = process.cwd();
 const CONTENT = resolve(ROOT, "content");
 const TEMPLATES = resolve(CONTENT, "templates");
 const MEDIA = resolve(ROOT, "public/media");
-const PAGE_SLUGS = new Set(["information", "biography", "contact"]);
+const PAGE_TITLES: Record<PageSlug, string> = { information: "Information", biography: "Biography", contact: "Contact" };
+const BOOLEAN_OPTIONS: readonly string[] = ["force", "unused"];
+/** Options each command accepts; anything else is rejected instead of silently ignored. */
+const ALLOWED_OPTIONS = {
+  article: ["title", "date", "description", "category", "tags", "template", "section"],
+  work: ["title", "date", "summary", "kind", "tags"],
+  publication: ["title", "date", "description", "publisher"],
+  page: ["date", "force"],
+  "media add": ["name"],
+  "media list": ["unused"],
+  validate: [],
+  build: [],
+} as const;
 const CONTENT_KINDS = ["article", "work", "publication"] as const;
 type ContentKind = (typeof CONTENT_KINDS)[number];
 const IMAGE_EXTENSIONS = new Set([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"]);
@@ -36,16 +48,41 @@ function parseOptions(args: string[]) {
       continue;
     }
     const key = arg.slice(2);
-    if (["force", "unused"].includes(key)) {
+    if (BOOLEAN_OPTIONS.includes(key)) {
       options.set(key, true);
       continue;
     }
     const value = args[index + 1];
-    if (!value || value.startsWith("--")) fail(`--${key} requires a value`);
+    // Record a missing value as `true`; assertAllowedOptions reports unknown flags first, then missing values.
+    if (!value || value.startsWith("--")) {
+      options.set(key, true);
+      continue;
+    }
     options.set(key, value);
     index += 1;
   }
   return { options, positional };
+}
+
+function assertAllowedOptions(options: Map<string, string | boolean>, context: keyof typeof ALLOWED_OPTIONS) {
+  const allowed: readonly string[] = ALLOWED_OPTIONS[context];
+  const unknown = [...options.keys()].filter((key) => !allowed.includes(key));
+  if (unknown.length) fail(`${context} does not accept ${unknown.map((key) => `--${key}`).join(", ")}${allowed.length ? ` (allowed: ${allowed.map((key) => `--${key}`).join(", ")})` : ""}`);
+  const missingValue = [...options].find(([key, value]) => value === true && !BOOLEAN_OPTIONS.includes(key));
+  if (missingValue) fail(`--${missingValue[0]} requires a value`);
+}
+
+/** Writes a new file, validates it, and restores the previous state if validation fails. */
+function writeValidated(target: string, source: string, validate: () => void) {
+  const previous = existsSync(target) ? readFileSync(target, "utf8") : undefined;
+  writeFileSync(target, source);
+  try {
+    validate();
+  } catch (error) {
+    if (previous === undefined) rmSync(target);
+    else writeFileSync(target, previous);
+    fail(`${error instanceof Error ? error.message : String(error)} (nothing was written)`);
+  }
 }
 
 function option(options: Map<string, string | boolean>, key: string) {
@@ -87,26 +124,30 @@ function create(kind: ContentKind, slug: string, options: Map<string, string | b
   if (kind === "article" && legacySection) fail("new article no longer accepts --section; articles belong to Information");
   const articleTemplate = option(options, "template") ?? "essay";
   if (kind === "article" && !ARTICLE_TEMPLATES.includes(articleTemplate as (typeof ARTICLE_TEMPLATES)[number])) fail("--template must be essay, image-notes, or conversation");
+  const workKind = option(options, "kind");
+  if (kind === "work" && workKind !== undefined && !WORK_KINDS.includes(workKind as (typeof WORK_KINDS)[number])) fail(`--kind must be ${WORK_KINDS.join(", ")}`);
   const fields = kind === "article"
     ? { title: option(options, "title"), date, description: option(options, "description"), category: option(options, "category"), template: articleTemplate }
     : kind === "work"
-      ? { title: option(options, "title"), date, summary: option(options, "summary"), kind: option(options, "kind") }
+      ? { title: option(options, "title"), date, summary: option(options, "summary"), kind: workKind }
       : { title: option(options, "title"), date, description: option(options, "description"), publisher: option(options, "publisher") };
   const withFields = replaceTemplate(template, fields);
   const tags = option(options, "tags");
   const source = tags ? withFields.replace(/tags:\n(?:  - .*\n)+/, `tags:\n${tags.split(",").map((tag) => `  - ${JSON.stringify(tag.trim())}`).join("\n")}\n`) : withFields;
   mkdirSync(targetDirectory, { recursive: true });
-  writeFileSync(target, source);
+  writeValidated(target, source, () => validateContentFile(kind, target));
   console.log(`Created ${target}`);
 }
 
 function createPage(slug: string, force: boolean) {
-  if (!PAGE_SLUGS.has(slug)) fail("new page accepts information, biography, or contact");
-  const target = resolve(CONTENT, `pages/${slug}.md`);
+  if (!Object.hasOwn(PAGE_TITLES, slug)) fail("new page accepts information, biography, or contact");
+  const pageSlug = slug as PageSlug;
+  const target = resolve(CONTENT, `pages/${pageSlug}.md`);
   if (existsSync(target) && !force) fail(`${target} already exists; use --force to replace it`);
   mkdirSync(join(CONTENT, "pages"), { recursive: true });
   const date = option(options, "date") ?? localIsoDate();
-  writeFileSync(target, replaceTemplate(readFileSync(join(TEMPLATES, "page.md"), "utf8"), { title: slug, date, updated: date }));
+  const source = replaceTemplate(readFileSync(join(TEMPLATES, "page.md"), "utf8"), { title: PAGE_TITLES[pageSlug], date, updated: date });
+  writeValidated(target, source, () => getPage(pageSlug));
   console.log(`Created ${target}`);
 }
 
@@ -145,25 +186,31 @@ try {
     const [kind, slug] = positional;
     if (kind && (CONTENT_KINDS as readonly string[]).includes(kind)) {
       if (!slug) fail("new requires a slug");
+      assertAllowedOptions(options, kind as ContentKind);
       create(kind as ContentKind, slug, options);
     } else if (kind === "page") {
       if (!slug) fail("new page requires a page name");
+      assertAllowedOptions(options, "page");
       createPage(slug, options.get("force") === true);
     } else {
       fail("new accepts article, work, publication, or page");
     }
   } else if (command === "validate") {
     if (positional.length) fail("validate does not accept a path yet");
+    assertAllowedOptions(options, "validate");
     validateContent();
     console.log("Content is valid.");
   } else if (command === "media" && positional[0] === "add") {
     if (!positional[1]) fail("media add requires a source path");
+    assertAllowedOptions(options, "media add");
     const name = option(options, "name");
     if (!name) fail("media add requires --name");
     addMedia(positional[1], name);
   } else if (command === "media" && positional[0] === "list") {
+    assertAllowedOptions(options, "media list");
     listMedia(options.get("unused") === true);
   } else if (command === "build") {
+    assertAllowedOptions(options, "build");
     validateContent();
     console.log("Content is valid.");
     run("bun", ["run", "test"]);
