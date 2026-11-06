@@ -27,7 +27,7 @@ bun run dev
 
 1. 在 GitHub 打开 Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token。
 2. Repository access 选 Only select repositories → `Fio-X/fio-x.github.io`；Permissions 里把 Contents 设为 Read and write（Metadata 只读会自动加上）；设置一个过期时间。
-3. 在 `/admin/` 选「使用访问令牌登录」，粘贴令牌。「使用 GitHub 登录」需要额外部署授权服务，本站不用。
+3. 在 `/admin/` 选「使用访问令牌登录」，粘贴令牌。登录页只提供令牌登录（`config.yml` 中的 `auth_methods: [token]`）：「使用 GitHub 登录」需要额外部署授权服务，本站没有部署，点了只会看到 Not Found。
 
 写作要点：
 

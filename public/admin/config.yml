@@ -8,6 +8,9 @@ backend:
   name: github
   repo: Fio-X/fio-x.github.io
   branch: main
+  # Only token sign-in: "Sign in with GitHub" needs an OAuth server, which this site does not run
+  # (without one it opens api.netlify.com and shows "Not Found").
+  auth_methods: [token]
 
 site_url: https://fio-x.github.io
 media_folder: /public/media
