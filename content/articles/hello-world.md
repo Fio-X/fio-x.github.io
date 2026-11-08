@@ -1,5 +1,5 @@
 ---
-title: "Hello World"
+title: "first-post"
 date: "2026-07-31"
 description: "A first hello world entry for the Fio site."
 category: "journal"
